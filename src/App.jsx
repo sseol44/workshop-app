@@ -745,7 +745,7 @@ export default function App() {
                   className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl py-3.5 px-4 flex items-center justify-center space-x-2 text-slate-700 font-semibold text-sm transition-all shadow-xs"
                 >
                   <BarChart3 className="w-4 h-4 text-emerald-500" />
-                  <span>조직개선 설문 결과 (AI분석)</span>
+                  <span>조직개선 설문 결과</span>
                 </button>
 
                 <button 
@@ -993,14 +993,6 @@ export default function App() {
                 >
                   홈으로
                 </button>
-                <button 
-                  onClick={requestAiAnalysis}
-                  disabled={surveyResults.length === 0 || isAiAnalyzing}
-                  className="flex-1 sm:flex-none bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm hover:brightness-105 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
-                >
-                  {isAiAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  <span>{isAiAnalyzing ? "AI 분석가 가동 중..." : "AI 결과 종합 분석 요청"}</span>
-                </button>
               </div>
             </div>
 
@@ -1148,17 +1140,7 @@ export default function App() {
                         )}
                       </div>
 
-                      {aiReport && !isAiAnalyzing && (
-                        <div className="border-t border-emerald-100 pt-4 mt-4">
-                          <button 
-                            onClick={requestAiAnalysis}
-                            className="w-full bg-white hover:bg-slate-50 border border-emerald-200 text-emerald-600 font-bold py-2 px-3 rounded-lg text-xs transition-all flex items-center justify-center space-x-1"
-                          >
-                            <RefreshCw className="w-3.5 h-3.5" />
-                            <span>AI 분석 재갱신</span>
-                          </button>
-                        </div>
-                      )}
+
                     </div>
                   </div>
                 </div>
@@ -1542,6 +1524,25 @@ export default function App() {
                 >
                   <Trash2 className="w-4 h-4 text-rose-600" />
                   <span>파트 2 퀴즈 결과 & 유저답안 초기화</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 어드민 0.5: AI 분석 결과 통제 섹션 */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
+              <h4 className="text-base font-bold text-emerald-800 flex items-center space-x-1.5">
+                <Sparkles className="w-5 h-5 text-emerald-600" />
+                <span>조직문화 AI 분석 리포트 생성 및 제어</span>
+              </h4>
+              <p className="text-xs text-emerald-600">수집된 설문 데이터를 바탕으로 AI(Gemini)에 분석 보고서 생성을 요청합니다.</p>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  onClick={requestAiAnalysis}
+                  disabled={surveyResults.length === 0 || isAiAnalyzing}
+                  className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow-sm hover:brightness-105 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                >
+                  {isAiAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  <span>{isAiAnalyzing ? "AI 분석가 가동 중..." : "AI 결과 종합 분석 요청"}</span>
                 </button>
               </div>
             </div>
