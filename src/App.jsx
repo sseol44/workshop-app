@@ -704,7 +704,7 @@ export default function App() {
                   className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl py-3.5 px-4 flex items-center justify-center space-x-2 text-slate-700 font-semibold text-sm transition-all shadow-xs"
                 >
                   <BarChart3 className="w-4 h-4 text-emerald-500" />
-                  <span>조직개선 설문 결과</span>
+                  <span>PART 1. 대시보드</span>
                 </button>
 
                 <button 
@@ -712,7 +712,7 @@ export default function App() {
                   className="bg-white hover:bg-slate-50 border border-slate-200 rounded-xl py-3.5 px-4 flex items-center justify-center space-x-2 text-slate-700 font-semibold text-sm transition-all shadow-xs"
                 >
                   <Award className="w-4 h-4 text-cyan-500" />
-                  <span>퀴즈 실시간 리더보드</span>
+                  <span>PART 2. 리더보드</span>
                 </button>
 
                 <button 
@@ -720,7 +720,7 @@ export default function App() {
                   className="bg-slate-100 hover:bg-slate-200 rounded-xl py-3.5 px-4 flex items-center justify-center space-x-2 text-slate-700 font-semibold text-sm transition-all shadow-xs"
                 >
                   <Settings className="w-4 h-4 text-slate-500" />
-                  <span>관리자 대시보드 통제</span>
+                  <span>관리자 대시보드</span>
                 </button>
               </div>
             </div>
@@ -740,7 +740,7 @@ export default function App() {
                   type="text" 
                   value={userNickname} 
                   onChange={(e) => setUserNickname(e.target.value)} 
-                  placeholder="예: 즐거운구매인, 마동석계약"
+                  placeholder="예: 구매의정석, 네고왕"
                   className="w-full border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200/80 outline-none rounded-xl px-4 py-3 text-base transition-all"
                 />
               </div>
@@ -938,11 +938,14 @@ export default function App() {
           <div className="space-y-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-800 flex items-center space-x-2">
+                <h3 className="text-2xl font-bold text-slate-800 flex flex-wrap items-center gap-2">
                   <BarChart3 className="w-6 h-6 text-emerald-500" />
                   <span>조직혁신 설문 결과 대시보드</span>
+                  <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full">
+                    총 {surveyResults.length}명 참여
+                  </span>
                 </h3>
-                <p className="text-slate-500 text-sm mt-1">총 {surveyResults.length}명의 소중한 구매계약원 피드백을 실시간 집계합니다.</p>
+                <p className="text-slate-500 text-sm mt-1">소중한 구매계약원의 피드백을 실시간 집계합니다.</p>
               </div>
 
               <div className="flex space-x-2 w-full sm:w-auto">
@@ -1056,7 +1059,7 @@ export default function App() {
                           ) : (
                             surveyResults.map((res, i) => (
                               <div key={i} className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-slate-600 leading-normal">
-                                "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- {res.nickname} ({res.mbti})</span>
+                                "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- 익명 ({res.mbti})</span>
                               </div>
                             ))
                           )}
