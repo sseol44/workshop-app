@@ -62,48 +62,7 @@ const BALANCE_QUESTIONS = [
 ];
 
 // 초기 퀴즈 데이터 세트
-const INITIAL_QUIZZES = [
-  {
-    id: 1,
-    type: "choice", // choice(객관식), ox(OX), short(주관식)
-    question: "2026년 우리 계약실의 슬로건 중 빈칸에 들어갈 말은? '혁신적인 (    ), 상생하는 파트너십'",
-    options: ["구매 프로세스", "동반 성장", "계약 투명성", "고객 가치"],
-    answer: "구매 프로세스",
-    score: 20
-  },
-  {
-    id: 2,
-    type: "ox",
-    question: "현행 공정거래법상 대기업 간의 구매 계약 시 반드시 서면 계약서를 교부해야 유효하다.",
-    options: ["O", "X"],
-    answer: "O",
-    score: 15
-  },
-  {
-    id: 3,
-    type: "short",
-    question: "제품 개발 전 단계에서 협력사와 조기 협력하여 원가를 절감하고 품질을 높이는 구매 전략 기법의 약어(3글자)는?",
-    options: [],
-    answer: "ESI",
-    score: 25
-  },
-  {
-    id: 4,
-    type: "choice",
-    question: "구매 계약 성립의 3대 요소가 아닌 것은?",
-    options: ["청약 (Offer)", "승낙 (Acceptance)", "대가 (Consideration)", "담보 (Collateral)"],
-    answer: "담보 (Collateral)",
-    score: 20
-  },
-  {
-    id: 5,
-    type: "ox",
-    question: "조직 내 수평적 호칭 제도를 전면 도입하면 무조건 조직 생산성이 향상된다.",
-    options: ["O", "X"],
-    answer: "X",
-    score: 20
-  }
-];
+const INITIAL_QUIZZES = [];
 
 // 오디오 재생 헬퍼
 const playSound = (type) => {
@@ -1135,7 +1094,6 @@ export default function App() {
                           <div className="py-10 text-center text-slate-400">
                             <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                             <p className="text-sm font-bold">아직 생성된 AI 분석이 없습니다.</p>
-                            <p className="text-xs text-slate-400 mt-1">우측 상단 'AI 결과 종합 분석 요청'을 눌러 레포트를 작성해보세요.</p>
                           </div>
                         )}
                       </div>
@@ -1503,52 +1461,77 @@ export default function App() {
               </div>
             </div>
 
-            {/* 어드민 0: 통합 데이터 초기화 세션 */}
-            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 shadow-sm space-y-4">
-              <h4 className="text-base font-bold text-rose-800 flex items-center space-x-1.5">
-                <AlertTriangle className="w-5 h-5 text-rose-600" />
-                <span>데이터 일괄 초기화 관리 섹션</span>
+            {/* ========================================== */}
+            {/* PART 1. 조직개선 설문조사 통제 섹션          */}
+            {/* ========================================== */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2 border-b border-slate-200 pb-2">
+                <Users className="w-5 h-5 text-emerald-500" />
+                <span>PART 1. 조직개선 설문조사 통제</span>
               </h4>
-              <p className="text-xs text-rose-600">워크숍 행사 리허설 및 실제 본식 시작 전, 테스트용 수집 데이터를 일괄 청소할 수 있는 안전 시스템 장치입니다.</p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={resetPart1Data}
-                  className="bg-white hover:bg-rose-100 border border-rose-300 text-rose-700 text-xs font-extrabold py-2.5 px-4 rounded-lg shadow-xs transition-all flex items-center space-x-1.5"
-                >
-                  <Trash2 className="w-4 h-4 text-rose-600" />
-                  <span>파트 1 설문 & AI 리포트 초기화</span>
-                </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* AI 분석 리포트 생성 및 제어 */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
+                  <h5 className="font-bold text-emerald-800 flex items-center space-x-1.5 text-sm">
+                    <Sparkles className="w-4.5 h-4.5 text-emerald-600" />
+                    <span>조직문화 AI 분석 리포트 생성 및 제어</span>
+                  </h5>
+                  <p className="text-xs text-emerald-600">수집된 설문 데이터를 바탕으로 AI(Gemini)에 분석 보고서 생성을 요청합니다.</p>
+                  <div className="pt-2">
+                    <button
+                      onClick={requestAiAnalysis}
+                      disabled={surveyResults.length === 0 || isAiAnalyzing}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow-sm hover:brightness-105 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                    >
+                      {isAiAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      <span>{isAiAnalyzing ? "AI 분석가 가동 중..." : "AI 결과 종합 분석 요청"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 파트 1 데이터 초기화 */}
+                <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-6 shadow-sm space-y-4">
+                  <h5 className="font-bold text-rose-800 flex items-center space-x-1.5 text-sm">
+                    <Trash2 className="w-4.5 h-4.5 text-rose-600" />
+                    <span>파트 1 설문 데이터 초기화</span>
+                  </h5>
+                  <p className="text-xs text-rose-600/80">수집된 설문조사 및 작성된 AI 보고서 데이터를 완전히 리셋합니다.</p>
+                  <div className="pt-2">
+                    <button
+                      onClick={resetPart1Data}
+                      className="w-full bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center space-x-1.5"
+                    >
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      <span>파트 1 설문 & AI 리포트 초기화</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ========================================== */}
+            {/* PART 2. 워크숍 수료 평가 퀴즈 통제 섹션      */}
+            {/* ========================================== */}
+            <div className="space-y-4 pt-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-2 gap-2">
+                <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2">
+                  <HelpCircle className="w-5 h-5 text-cyan-500" />
+                  <span>PART 2. 워크숍 수료 평가 퀴즈 통제</span>
+                </h4>
+                
+                {/* 파트 2 초기화 버튼을 헤더 옆 컴팩트하게 배치 */}
                 <button
                   onClick={resetPart2Data}
-                  className="bg-white hover:bg-rose-100 border border-rose-300 text-rose-700 text-xs font-extrabold py-2.5 px-4 rounded-lg shadow-xs transition-all flex items-center space-x-1.5"
+                  className="bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold py-1.5 px-3 rounded-lg transition-all flex items-center space-x-1.5 self-start sm:self-auto"
                 >
-                  <Trash2 className="w-4 h-4 text-rose-600" />
-                  <span>파트 2 퀴즈 결과 & 유저답안 초기화</span>
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>파트 2 퀴즈 및 랭킹 데이터 초기화</span>
                 </button>
               </div>
-            </div>
 
-            {/* 어드민 0.5: AI 분석 결과 통제 섹션 */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
-              <h4 className="text-base font-bold text-emerald-800 flex items-center space-x-1.5">
-                <Sparkles className="w-5 h-5 text-emerald-600" />
-                <span>조직문화 AI 분석 리포트 생성 및 제어</span>
-              </h4>
-              <p className="text-xs text-emerald-600">수집된 설문 데이터를 바탕으로 AI(Gemini)에 분석 보고서 생성을 요청합니다.</p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={requestAiAnalysis}
-                  disabled={surveyResults.length === 0 || isAiAnalyzing}
-                  className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow-sm hover:brightness-105 transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
-                >
-                  {isAiAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  <span>{isAiAnalyzing ? "AI 분석가 가동 중..." : "AI 결과 종합 분석 요청"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 어드민 세션 분할 배치 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* 어드민 세션 분할 배치 */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* 세션 A: 실시간 라이브 퀴즈 송출 상황판 (2칸 차지) */}
               <div className="lg:col-span-2 space-y-6">
