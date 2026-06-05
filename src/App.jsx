@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, HelpCircle, BarChart3, Settings, LogIn, ChevronRight, ChevronLeft, 
   Play, RotateCcw, AlertTriangle, Plus, Trash2, Edit2, Volume2, VolumeX,
-  Award, CheckCircle, X, RefreshCw, Send, Sparkles, Smile, Star, Coffee
+  Award, CheckCircle, X, RefreshCw, Send, Sparkles, Smile, Star, Coffee,
+  Download, FileSpreadsheet
 } from 'lucide-react';
 
 // === CONSTANTS & QUESTION BANK ===
@@ -531,6 +532,64 @@ export default function App() {
       localStorage.removeItem('quizResponses');
       updateAdminStatus(1, false);
       triggerAlert("초기화 완료", "파트2 데이터가 완벽하게 초기화되었습니다.");
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (surveyResults.length === 0) {
+      triggerAlert("다운로드 실패", "다운로드할 설문 데이터가 없습니다.");
+      return;
+    }
+
+    try {
+      // CDN에서 XLSX 라이브러리 동적 로드
+      if (!window.XLSX) {
+        const script = document.createElement('script');
+        script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+      }
+
+      const XLSX = window.XLSX;
+
+      // 데이터 변환
+      const data = surveyResults.map(res => {
+        const row = {
+          "제출 시간": res.timestamp ? new Date(res.timestamp).toLocaleString() : "",
+          "성격유형 (MBTI)": res.mbti || "",
+        };
+
+        // 만족도 조사 답변 추가
+        SATISFACTION_QUESTIONS.forEach(q => {
+          row[`만족도 Q${q.id} [${q.category}]: ${q.text}`] = res.responses[`sat_${q.id}`] || "";
+        });
+
+        // 밸런스 게임 답변 추가
+        BALANCE_QUESTIONS.forEach(q => {
+          const ans = res.responses[`bal_${q.id}`];
+          row[`밸런스 Q${q.id} [${q.category}]: ${q.text}`] = ans ? (ans === 'A' ? "A: " + q.optionA : "B: " + q.optionB) : "";
+        });
+
+        // VOC 추가
+        row["VOC 의견"] = res.voc || "";
+
+        return row;
+      });
+
+      // 워크시트 생성
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "설문조사 결과");
+
+      // 파일 생성 및 다운로드
+      XLSX.writeFile(workbook, `조직개선_설문결과_${new Date().toISOString().slice(0,10)}.xlsx`);
+    } catch (error) {
+      console.error("Excel download error", error);
+      triggerAlert("오류 발생", "엑셀 파일을 다운로드하는 도중 오류가 발생했습니다.");
     }
   };
 
@@ -1473,7 +1532,7 @@ export default function App() {
                 <span>PART 1. 조직개선 설문조사 통제</span>
               </h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* AI 분석 리포트 생성 및 제어 */}
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <h5 className="font-bold text-emerald-800 flex items-center space-x-1.5 text-sm">
@@ -1489,6 +1548,25 @@ export default function App() {
                     >
                       {isAiAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                       <span>{isAiAnalyzing ? "AI 분석가 가동 중..." : "AI 결과 종합 분석 요청"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 설문 데이터 엑셀 다운로드 */}
+                <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 shadow-sm space-y-4">
+                  <h5 className="font-bold text-emerald-800 flex items-center space-x-1.5 text-sm">
+                    <FileSpreadsheet className="w-4.5 h-4.5 text-emerald-600" />
+                    <span>설문 데이터 엑셀 다운로드</span>
+                  </h5>
+                  <p className="text-xs text-emerald-600/80">현재까지 수집된 모든 설문 데이터(만족도, 밸런스게임, VOC)를 엑셀 파일(.xlsx)로 다운로드합니다.</p>
+                  <div className="pt-2">
+                    <button
+                      onClick={handleDownloadExcel}
+                      disabled={surveyResults.length === 0}
+                      className="w-full bg-white hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-extrabold py-2.5 px-4 rounded-lg shadow-xs transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                    >
+                      <Download className="w-4 h-4 text-emerald-600" />
+                      <span>엑셀 다운로드 (.xlsx)</span>
                     </button>
                   </div>
                 </div>
