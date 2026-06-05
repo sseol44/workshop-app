@@ -1836,39 +1836,39 @@ export default function App() {
 
         return (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl my-8">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-8 space-y-6 shadow-2xl my-8">
               <div className="flex items-center justify-between border-b pb-3">
-                <h4 className="font-black text-slate-800 text-lg flex items-center space-x-2">
-                  <Award className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                <h4 className="font-black text-slate-800 text-xl flex items-center space-x-2">
+                  <Award className="w-7 h-7 text-yellow-500 fill-yellow-500" />
                   <span>실시간 즉석 추첨기 (문제 {currentQuiz?.id})</span>
                 </h4>
                 <button 
                   onClick={() => setIsRaffleModalOpen(false)}
                   className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
               {/* 1. 정답자/오답자 수와 비율 표시 */}
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 text-xs">
-                <div className="flex justify-between items-center text-slate-700 font-bold">
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3 text-xs">
+                <div className="flex justify-between items-center text-slate-700 font-bold text-sm">
                   <span>총 제출 현황: {totalCount}명</span>
                   <span className="text-cyan-600">Q{currentQuiz?.id} 문제</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-center">
                     <p className="text-emerald-700 font-bold mb-1">정답자</p>
-                    <p className="text-lg font-black text-emerald-800">{correctCount}명 ({correctRate}%)</p>
+                    <p className="text-xl font-black text-emerald-800">{correctCount}명 ({correctRate}%)</p>
                   </div>
-                  <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-center">
+                  <div className="bg-rose-50 border border-rose-100 rounded-lg p-4 text-center">
                     <p className="text-rose-700 font-bold mb-1">오답자</p>
-                    <p className="text-lg font-black text-rose-800">{incorrectCount}명 ({incorrectRate}%)</p>
+                    <p className="text-xl font-black text-rose-800">{incorrectCount}명 ({incorrectRate}%)</p>
                   </div>
                 </div>
 
-                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
                   <div className="h-full bg-emerald-500" style={{ width: `${correctRate}%` }} />
                   <div className="h-full bg-rose-400" style={{ width: `${incorrectRate}%` }} />
                 </div>
@@ -1904,33 +1904,45 @@ export default function App() {
               </div>
 
               {/* 추첨판 시각화 영역 */}
-              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] border border-slate-100 relative overflow-hidden">
+              <div className="bg-slate-50 rounded-xl p-6 flex flex-col items-center justify-center min-h-[350px] border border-slate-100 relative overflow-hidden">
                 {!isRaffleAssigned ? (
                   <div className="text-center py-6 text-slate-400 space-y-2">
-                    <Users className="w-10 h-10 mx-auto text-slate-300 animate-bounce" />
-                    <p className="font-bold text-sm text-slate-500">추첨 판이 준비되지 않았습니다.</p>
-                    <p className="text-xs">하단 '즉석 기프티콘 추첨 시작 (정답자 배정)' 버튼을 눌러 정답자를 먼저 배정해주세요.</p>
+                    <Users className="w-12 h-12 mx-auto text-slate-300 animate-bounce" />
+                    <p className="font-bold text-base text-slate-500">추첨 판이 준비되지 않았습니다.</p>
+                    <p className="text-xs">하단 '즉석 기프티콘 추첨 시작' 버튼을 눌러 정답자를 먼저 배정해주세요.</p>
                   </div>
                 ) : drawMethod === 'roulette' ? (
                   <div className="flex flex-col items-center">
                     <div 
-                      className="w-28 h-28 rounded-full border-4 border-dashed border-cyan-500 flex flex-col items-center justify-center font-black text-[10px] bg-white text-cyan-600 shadow-inner transition-transform duration-[3000ms] ease-out"
+                      className="w-52 h-52 rounded-full border-4 border-dashed border-cyan-500 flex flex-col items-center justify-center font-black text-xs bg-white text-cyan-600 shadow-inner transition-transform duration-[3000ms] ease-out relative overflow-hidden"
                       style={{ transform: `rotate(${rouletteDegree}deg)` }}
                     >
-                      <span>ROULETTE</span>
-                      <span className="text-[9px] text-emerald-500 mt-1">({correctCount}명 배정)</span>
+                      <div className="absolute inset-0 flex flex-wrap items-center justify-center p-4 content-center bg-radial-gradient">
+                        {correctResponses.map((r, idx) => (
+                          <span 
+                            key={idx} 
+                            className="text-[9px] font-extrabold text-slate-800 bg-cyan-100/90 px-1.5 py-0.5 rounded m-0.5 shadow-xs border border-cyan-200/50"
+                          >
+                            {r.nickname}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <svg className="w-6 h-6 text-rose-500 -mt-2 z-10" viewBox="0 0 24 24" fill="currentColor">
+                    <svg className="w-8 h-8 text-rose-500 -mt-3 z-10" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 3l8 14H4z" />
                     </svg>
                   </div>
                 ) : (
-                  <div className="space-y-1 w-full text-center">
-                    <div className="flex justify-around items-end h-16 w-full px-4">
-                      {[1,2,3,4].map(i => (
-                        <div key={i} className="w-1.5 bg-slate-300 h-full rounded relative">
-                          <div className="absolute top-4 -left-2 -right-2 h-1 bg-slate-300" />
-                          <div className="absolute top-10 -left-2 -right-2 h-1 bg-slate-300" />
+                  <div className="space-y-4 w-full text-center">
+                    <div className="flex justify-around items-end h-44 w-full px-4 border-b border-dashed border-slate-200 pb-2">
+                      {correctResponses.slice(0, 10).map((r, i) => (
+                        <div key={i} className="w-2 bg-cyan-400 h-full rounded relative flex flex-col justify-between items-center">
+                          <span className="absolute -top-10 text-[9px] font-black text-slate-700 bg-white px-2 py-0.5 border border-cyan-200 rounded shadow-xs whitespace-nowrap z-10">
+                            {r.nickname}
+                          </span>
+                          <div className="absolute top-8 -left-4 -right-4 h-1 bg-slate-300" />
+                          <div className="absolute top-20 -left-4 -right-4 h-1 bg-slate-300" />
+                          <div className="absolute top-32 -left-4 -right-4 h-1 bg-slate-300" />
                         </div>
                       ))}
                     </div>
