@@ -1648,7 +1648,12 @@ export default function App() {
                           <button
                             onClick={() => {
                               const nextAnswerState = !adminShowAnswer;
-                              updateAdminStatus(currentAdminQuizId, nextAnswerState);
+                              const confirmMsg = nextAnswerState 
+                                ? "정말 정답을 공개하시겠습니까?" 
+                                : "정답을 다시 숨기시겠습니까?";
+                              if (window.confirm(confirmMsg)) {
+                                updateAdminStatus(currentAdminQuizId, nextAnswerState);
+                              }
                             }}
                             className={`text-xs font-bold py-2 px-3.5 rounded-lg shadow-xs transition-all flex items-center space-x-1
                               ${adminShowAnswer ? 'bg-rose-500 hover:bg-rose-600 text-white' : 'bg-emerald-500 hover:bg-emerald-600 text-white'}`}
@@ -1687,7 +1692,9 @@ export default function App() {
                         <button
                           key={q.id}
                           onClick={() => {
-                            updateAdminStatus(q.id, false);
+                            if (window.confirm(`Q${q.id} 번 문제를 정말로 실시간 송출하시겠습니까?`)) {
+                              updateAdminStatus(q.id, false);
+                            }
                           }}
                           className={`py-2 px-3 text-xs font-black rounded-lg border text-left transition-all
                             ${currentAdminQuizId === q.id 
