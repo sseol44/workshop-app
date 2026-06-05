@@ -193,6 +193,8 @@ export default function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawMethod, setDrawMethod] = useState('roulette'); 
   const [rouletteDegree, setRouletteDegree] = useState(0);
+  const [isRaffleModalOpen, setIsRaffleModalOpen] = useState(false);
+  const [isRaffleAssigned, setIsRaffleAssigned] = useState(false);
 
   // 관리자 모드 비밀번호 입력
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
@@ -1757,91 +1759,30 @@ export default function App() {
 
               </div>
 
-              {/* 세션 C: 정답자 실시간 즉석 추첨기 */}
+              {/* 세션 C: 즉석 추첨기 게이트웨이 */}
               <div className="space-y-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
                   <div className="border-b pb-3">
                     <h4 className="font-bold text-slate-800 text-base">정답자 실시간 즉석 추첨기</h4>
-                    <p className="text-xs text-slate-400 mt-1">현재 활성 퀴즈의 정답자 명단을 추출하여 추첨 시뮬레이션을 돌립니다.</p>
+                    <p className="text-xs text-slate-400 mt-1">실시간 퀴즈 정답자들을 대상으로 한 즉석 기프티콘 추첨 모듈입니다.</p>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2">추첨 방식 결정</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => setDrawMethod('roulette')}
-                        className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-all
-                          ${drawMethod === 'roulette' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
-                      >
-                        룰렛 회전판
-                      </button>
-                      <button
-                        onClick={() => setDrawMethod('ladder')}
-                        className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-all
-                          ${drawMethod === 'ladder' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
-                      >
-                        사다리 시뮬레이션
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 추첨판 시각화 영역 */}
-                  <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[180px] border border-slate-100 relative overflow-hidden">
-                    {drawMethod === 'roulette' ? (
-                      <div className="flex flex-col items-center">
-                        <div 
-                          className="w-24 h-24 rounded-full border-4 border-dashed border-cyan-500 flex items-center justify-center font-bold text-xs bg-white text-cyan-600 shadow-inner transition-transform duration-[3000ms] ease-out"
-                          style={{ transform: `rotate(${rouletteDegree}deg)` }}
-                        >
-                          ROULETTE
-                        </div>
-                        {/* CSS clip-path 대신 완벽히 인라인 렌더되는 SVG 바늘 시각화 */}
-                        <svg className="w-6 h-6 text-rose-500 -mt-2 z-10" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 3l8 14H4z" />
-                        </svg>
-                      </div>
-                    ) : (
-                      <div className="space-y-1 w-full text-center">
-                        <div className="flex justify-around items-end h-16 w-full px-4">
-                          {[1,2,3,4].map(i => (
-                            <div key={i} className="w-1.5 bg-slate-300 h-full rounded relative">
-                              <div className="absolute top-4 -left-2 -right-2 h-1 bg-slate-300" />
-                              <div className="absolute top-10 -left-2 -right-2 h-1 bg-slate-300" />
-                            </div>
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-slate-400 block font-bold">LADDER GAME ACTIVE</span>
-                      </div>
-                    )}
-
-                    {isDrawing && (
-                      <div className="absolute inset-0 bg-slate-900/40 text-white flex items-center justify-center font-black animate-pulse text-sm">
-                        추첨 진행 중...
-                      </div>
-                    )}
-
-                    {drawWinner && (
-                      <div className="absolute inset-0 bg-emerald-500 text-white flex flex-col items-center justify-center p-4 text-center">
-                        <Award className="w-10 h-10 text-yellow-300 mb-1" />
-                        <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">당첨을 축하드립니다!</span>
-                        <h5 className="font-extrabold text-lg mt-1">{drawWinner.nickname}</h5>
-                        <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.timeTaken}초</p>
-                        <button 
-                          onClick={() => setDrawWinner(null)}
-                          className="mt-3 bg-white text-slate-800 text-[10px] font-bold py-1 px-3 rounded-md shadow"
-                        >
-                          확인 완료
-                        </button>
-                      </div>
-                    )}
+                  
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs text-slate-500 space-y-2">
+                    <p className="font-bold text-slate-700">📌 추첨 안내</p>
+                    <p>- 현재 송출된 퀴즈의 정답자 명단을 추출하여 추첨 팝업 창을 엽니다.</p>
+                    <p>- 팝업 창 내에서 룰렛/사다리 배정 및 추첨을 제어할 수 있습니다.</p>
                   </div>
 
                   <button
-                    onClick={startDrawing}
-                    disabled={isDrawing}
-                    className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow transition-all"
+                    onClick={() => {
+                      setIsRaffleModalOpen(true);
+                      setIsRaffleAssigned(false);
+                      setDrawWinner(null);
+                    }}
+                    className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow transition-all flex items-center justify-center space-x-1.5"
                   >
-                    {isDrawing ? "추첨 진행 중..." : "즉석 기프티콘 추첨 시작!"}
+                    <Award className="w-5 h-5" />
+                    <span>추첨기 팝업 호출하기</span>
                   </button>
                 </div>
               </div>
@@ -1881,6 +1822,182 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* REAL-TIME RAFFLE POPUP MODAL (ADMIN ONLY) */}
+      {isRaffleModalOpen && (() => {
+        const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
+        const responsesForQ = quizResponses.filter(r => r.quizId === currentQuiz?.id);
+        const correctResponses = responsesForQ.filter(r => r.isCorrect);
+        const correctCount = correctResponses.length;
+        const incorrectCount = responsesForQ.length - correctCount;
+        const totalCount = responsesForQ.length;
+        const correctRate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+        const incorrectRate = totalCount > 0 ? 100 - correctRate : 0;
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-6 shadow-2xl my-8">
+              <div className="flex items-center justify-between border-b pb-3">
+                <h4 className="font-black text-slate-800 text-lg flex items-center space-x-2">
+                  <Award className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                  <span>실시간 즉석 추첨기 (문제 {currentQuiz?.id})</span>
+                </h4>
+                <button 
+                  onClick={() => setIsRaffleModalOpen(false)}
+                  className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* 1. 정답자/오답자 수와 비율 표시 */}
+              <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 text-xs">
+                <div className="flex justify-between items-center text-slate-700 font-bold">
+                  <span>총 제출 현황: {totalCount}명</span>
+                  <span className="text-cyan-600">Q{currentQuiz?.id} 문제</span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+                    <p className="text-emerald-700 font-bold mb-1">정답자</p>
+                    <p className="text-lg font-black text-emerald-800">{correctCount}명 ({correctRate}%)</p>
+                  </div>
+                  <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-center">
+                    <p className="text-rose-700 font-bold mb-1">오답자</p>
+                    <p className="text-lg font-black text-rose-800">{incorrectCount}명 ({incorrectRate}%)</p>
+                  </div>
+                </div>
+
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+                  <div className="h-full bg-emerald-500" style={{ width: `${correctRate}%` }} />
+                  <div className="h-full bg-rose-400" style={{ width: `${incorrectRate}%` }} />
+                </div>
+              </div>
+
+              {/* 추첨 방식 결정 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">추첨 방식</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setDrawMethod('roulette');
+                      setIsRaffleAssigned(false);
+                      setDrawWinner(null);
+                    }}
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-all
+                      ${drawMethod === 'roulette' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
+                  >
+                    룰렛 회전판
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDrawMethod('ladder');
+                      setIsRaffleAssigned(false);
+                      setDrawWinner(null);
+                    }}
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-all
+                      ${drawMethod === 'ladder' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
+                  >
+                    사다리 시뮬레이션
+                  </button>
+                </div>
+              </div>
+
+              {/* 추첨판 시각화 영역 */}
+              <div className="bg-slate-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[200px] border border-slate-100 relative overflow-hidden">
+                {!isRaffleAssigned ? (
+                  <div className="text-center py-6 text-slate-400 space-y-2">
+                    <Users className="w-10 h-10 mx-auto text-slate-300 animate-bounce" />
+                    <p className="font-bold text-sm text-slate-500">추첨 판이 준비되지 않았습니다.</p>
+                    <p className="text-xs">하단 '즉석 기프티콘 추첨 시작 (정답자 배정)' 버튼을 눌러 정답자를 먼저 배정해주세요.</p>
+                  </div>
+                ) : drawMethod === 'roulette' ? (
+                  <div className="flex flex-col items-center">
+                    <div 
+                      className="w-28 h-28 rounded-full border-4 border-dashed border-cyan-500 flex flex-col items-center justify-center font-black text-[10px] bg-white text-cyan-600 shadow-inner transition-transform duration-[3000ms] ease-out"
+                      style={{ transform: `rotate(${rouletteDegree}deg)` }}
+                    >
+                      <span>ROULETTE</span>
+                      <span className="text-[9px] text-emerald-500 mt-1">({correctCount}명 배정)</span>
+                    </div>
+                    <svg className="w-6 h-6 text-rose-500 -mt-2 z-10" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 3l8 14H4z" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="space-y-1 w-full text-center">
+                    <div className="flex justify-around items-end h-16 w-full px-4">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="w-1.5 bg-slate-300 h-full rounded relative">
+                          <div className="absolute top-4 -left-2 -right-2 h-1 bg-slate-300" />
+                          <div className="absolute top-10 -left-2 -right-2 h-1 bg-slate-300" />
+                        </div>
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-slate-400 block font-bold">LADDER GAME ACTIVE ({correctCount}명 배정)</span>
+                  </div>
+                )}
+
+                {isDrawing && (
+                  <div className="absolute inset-0 bg-slate-900/40 text-white flex items-center justify-center font-black animate-pulse text-sm">
+                    추첨 진행 중...
+                  </div>
+                )}
+
+                {drawWinner && (
+                  <div className="absolute inset-0 bg-emerald-500 text-white flex flex-col items-center justify-center p-4 text-center z-20">
+                    <Award className="w-12 h-12 text-yellow-300 mb-1" />
+                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">당첨을 축하드립니다!</span>
+                    <h5 className="font-extrabold text-xl mt-1">{drawWinner.nickname}</h5>
+                    <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.timeTaken}초</p>
+                    <button 
+                      onClick={() => setDrawWinner(null)}
+                      className="mt-3 bg-white text-slate-800 text-xs font-bold py-1 px-4 rounded-md shadow hover:bg-slate-50 transition-colors"
+                    >
+                      확인 완료
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 제어 버튼 구성 */}
+              <div className="flex space-x-3 text-xs">
+                {!isRaffleAssigned ? (
+                  <button
+                    onClick={() => {
+                      if (correctCount === 0) {
+                        triggerAlert("배정 불가", "해당 문제의 정답자가 존재하지 않아 추첨을 구성할 수 없습니다.");
+                        return;
+                      }
+                      setIsRaffleAssigned(true);
+                      triggerAlert("배정 완료", `정답자 ${correctCount}명이 추첨판에 성공적으로 배치되었습니다.`);
+                    }}
+                    className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl shadow transition-all"
+                  >
+                    즉석 기프티콘 추첨 시작
+                  </button>
+                ) : (
+                  <button
+                    onClick={startDrawing}
+                    disabled={isDrawing}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow transition-all disabled:opacity-50"
+                  >
+                    {isDrawing ? "추첨 진행 중..." : "추첨시작"}
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => setIsRaffleModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl transition-all"
+                >
+                  닫기
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* QUIZ WRITE/EDIT MODAL (ADMIN ONLY) */}
       {isQuizModalOpen && (
