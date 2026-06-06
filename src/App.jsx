@@ -890,6 +890,13 @@ export default function App() {
                             ? 'bg-emerald-500 border-emerald-500 text-white shadow-md' 
                             : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                           }`}
+                      >
+                        <span className="text-base md:text-lg">{val}</span>
+                        <span className="text-[10px] md:text-xs">
+                          {val === 1 ? "매우반대" : val === 3 ? "보통" : val === 5 ? "매우찬성" : ""}
+                        </span>
+                      </button>
+                    ))}
                 <div className="space-y-8">
                   {/* 상단: 만족도 평점 & 밸런스 지형도 (동일 크기, 좌우 배치) */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
