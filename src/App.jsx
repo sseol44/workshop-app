@@ -1098,15 +1098,50 @@ export default function App() {
 
                   {/* 구매계약실 MBTI 분포 */}
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                    <h4 className="text-sm font-bold text-slate-700 mb-3">구매계약실 MBTI 분포</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
-                        <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
-                          <span>{m}</span>
-                          <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
-                        </span>
-                      ))}
-                    </div>
+                    <h4 className="text-sm font-bold text-slate-700 mb-1">구매계약실 MBTI 분포</h4>
+                    <p className="text-xs text-slate-400 mb-4">총 {Object.values(stats.mbtiCounts).reduce((a,b)=>a+b,0)}명 응답</p>
+                    {(() => {
+                      const MBTI_GROUPS = {
+                        "분석가": { types: ["INTJ","INTP","ENTJ","ENTP"], color: "bg-violet-500", light: "bg-violet-50", text: "text-violet-700", border: "border-violet-200" },
+                        "외교관": { types: ["INFJ","INFP","ENFJ","ENFP"], color: "bg-emerald-500", light: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+                        "관리자": { types: ["ISTJ","ISFJ","ESTJ","ESFJ"], color: "bg-cyan-500",   light: "bg-cyan-50",   text: "text-cyan-700",   border: "border-cyan-200"   },
+                        "탐험가": { types: ["ISTP","ISFP","ESTP","ESFP"], color: "bg-amber-500",  light: "bg-amber-50",  text: "text-amber-700",  border: "border-amber-200"  },
+                      };
+                      const total = Object.values(stats.mbtiCounts).reduce((a,b)=>a+b,0);
+                      return (
+                        <div className="space-y-4">
+                          {Object.entries(MBTI_GROUPS).map(([groupName, g]) => {
+                            const groupTotal = g.types.reduce((sum, t) => sum + (stats.mbtiCounts[t] || 0), 0);
+                            if (groupTotal === 0) return null;
+                            return (
+                              <div key={groupName}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className={`w-2 h-2 rounded-full ${g.color}`} />
+                                    <span className="text-xs font-bold text-slate-600">{groupName}</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-semibold">{groupTotal}명 · {Math.round(groupTotal/total*100)}%</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {g.types.map(type => {
+                                    const cnt = stats.mbtiCounts[type] || 0;
+                                    if (cnt === 0) return null;
+                                    const pct = Math.round(cnt / total * 100);
+                                    return (
+                                      <div key={type} className={`${g.light} border ${g.border} rounded-xl px-3 py-2 flex flex-col items-center min-w-[64px]`}>
+                                        <span className={`text-sm font-black ${g.text}`}>{type}</span>
+                                        <span className="text-slate-500 text-[11px] font-bold mt-0.5">{cnt}명</span>
+                                        <span className="text-[10px] text-slate-400">{pct}%</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Gemini AI 분석 보고서 */}
