@@ -1348,46 +1348,79 @@ export default function App() {
                   <div className="space-y-3">
                     {/* 1) 객관식 유형 */}
                     {currentQuiz.type === 'choice' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {currentQuiz.options.map((opt, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              setSelectedAnswer(opt);
-                              submitQuizAnswer(opt, quizTimer);
-                            }}
-                            className="bg-slate-50 hover:bg-cyan-50 hover:border-cyan-300 border border-slate-200 rounded-xl p-4 text-left font-semibold text-sm transition-all flex items-center space-x-3"
-                          >
-                            <span className="bg-cyan-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">{i+1}</span>
-                            <span>{opt}</span>
-                          </button>
-                        ))}
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {currentQuiz.options.map((opt, i) => (
+                            <button
+                              key={i}
+                              onClick={() => setSelectedAnswer(opt)}   // ← 선택만 함
+                              className={`border rounded-xl p-4 text-left font-semibold text-sm transition-all flex items-center space-x-3
+                                ${selectedAnswer === opt
+                                  ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-200'
+                                  : 'bg-slate-50 hover:bg-cyan-50 hover:border-cyan-300 border-slate-200'
+                                }`}
+                            >
+                              <span className={`rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold
+                                ${selectedAnswer === opt ? 'bg-cyan-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                {i+1}
+                              </span>
+                              <span>{opt}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!selectedAnswer) {
+                              triggerAlert("선택 필요", "보기를 먼저 선택해주세요.");
+                              return;
+                            }
+                            submitQuizAnswer(selectedAnswer, quizTimer);
+                          }}
+                          className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all"
+                        >
+                          응답 제출
+                        </button>
                       </div>
                     )}
 
                     {/* 2) OX 유형 */}
                     {currentQuiz.type === 'ox' && (
-                      <div className="grid grid-cols-2 gap-4">
-                        {["O", "X"].map((opt) => (
-                          <button
-                            key={opt}
-                            onClick={() => {
-                              setSelectedAnswer(opt);
-                              submitQuizAnswer(opt, quizTimer);
-                            }}
-                            className={`p-8 rounded-xl border text-center font-black text-3xl transition-all
-                              ${opt === 'O' 
-                                ? 'bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-600' 
-                                : 'bg-slate-50 hover:bg-rose-50 hover:border-rose-300 text-rose-600'
-                              }`}
-                          >
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          {["O", "X"].map((opt) => (
+                            <button
+                              key={opt}
+                              onClick={() => setSelectedAnswer(opt)}   // ← 선택만 함
+                              className={`p-8 rounded-xl border text-center font-black text-3xl transition-all
+                                ${selectedAnswer === opt
+                                  ? opt === 'O'
+                                    ? 'bg-emerald-100 border-emerald-400 ring-2 ring-emerald-200 text-emerald-600'
+                                    : 'bg-rose-100 border-rose-400 ring-2 ring-rose-200 text-rose-600'
+                                  : opt === 'O'
+                                    ? 'bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-600'
+                                    : 'bg-slate-50 hover:bg-rose-50 hover:border-rose-300 text-rose-600'
+                                }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    if (!selectedAnswer) {
+                      triggerAlert("선택 필요", "O 또는 X를 먼저 선택해주세요.");
+                      return;
+                    }
+                    submitQuizAnswer(selectedAnswer, quizTimer);
+                  }}
+                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all"
+                >
+                  응답 제출
+                </button>
+              </div>
+            )}
 
-                    {/* 3) 주관식 유형 */}
+                    {/* 3) 주관식 유형 — 기존과 동일 */}
                     {currentQuiz.type === 'short' && (
                       <div className="space-y-3">
                         <input
@@ -1405,10 +1438,13 @@ export default function App() {
                             }
                             submitQuizAnswer(selectedAnswer, quizTimer);
                           }}
-                          className="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:brightness-105 transition-all"
+                          className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all"
                         >
-                          제출하기
+                          응답 제출
                         </button>
+                      </div>
+                    )}
+                  </div>
                       </div>
                     )}
                   </div>
