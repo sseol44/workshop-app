@@ -746,7 +746,7 @@ export default function App() {
                   <div className="bg-cyan-50 text-cyan-600 w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <HelpCircle className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 mb-2">PART 2. 워크숍 수료 평가 퀴즈</h3>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">PART 2. 워크숍 수료평가</h3>
                   <p className="text-slate-500 text-sm leading-relaxed">
                     상하반기 업무 역량과 워크숍 지식을 다루는 실시간 동기화 스피드 퀴즈! 빠른 답안 제출과 고득점으로 당당히 1등에 도전해 보세요.
                   </p>
@@ -1001,7 +1001,7 @@ export default function App() {
               <div>
                 <h3 className="text-2xl font-bold text-slate-800 flex flex-wrap items-center gap-2">
                   <BarChart3 className="w-6 h-6 text-emerald-500" />
-                  <span>조직혁신 설문 결과 대시보드</span>
+                  <span>PART 1.조직개선 설문결과 대시보드</span>
                   <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full">
                     총 {surveyResults.length}명 참여
                   </span>
@@ -1600,7 +1600,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-2 gap-2">
                 <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2">
                   <HelpCircle className="w-5 h-5 text-cyan-500" />
-                  <span>PART 2. 워크숍 수료 평가 퀴즈 통제</span>
+                  <span>PART 2. 워크숍 수료 평가 통제</span>
                 </h4>
                 
                 {/* 파트 2 초기화 버튼을 헤더 옆 컴팩트하게 배치 */}
@@ -1798,7 +1798,7 @@ export default function App() {
       {/* FOOTER */}
       <footer className="bg-white border-t border-slate-100 py-6 px-4 mt-12 text-center text-xs text-slate-400 font-medium">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 구매계약실 상반기 워크숍 운영위원회. All rights reserved.</p>
+          <p>© 2026 구매계약실 상반기 워크숍. All rights reserved.</p>
           <div className="flex space-x-3">
             <span className="text-slate-300">|</span>
             <span className="text-slate-400">배경 스타일: 라이트 모드 (화사한 톤)</span>
