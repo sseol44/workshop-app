@@ -1148,7 +1148,7 @@ export default function App() {
                       ) : (
                         surveyResults.map((res, i) => (
                           <div key={i} className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-slate-600 leading-normal">
-                            "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- 익명 ({res.mbti})</span>
+                            "{res.voc}"
                           </div>
                         ))
                       )}
