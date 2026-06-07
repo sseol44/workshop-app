@@ -213,17 +213,13 @@ export default function App() {
         setQuizResponses(prev => [...prev, payload.new]);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_status' }, (payload) => {
-        const prev = payload.old;
-        const next = payload.new;
-        setCurrentAdminQuizId(next.current_quiz_id);
-        setAdminShowAnswer(next.show_answer);
-        // 문제가 바뀐 경우에만 응답 상태 초기화 (정답 공개만 된 경우엔 초기화 안 함)
-        if (prev.current_quiz_id !== next.current_quiz_id) {
-          setQuizTimer(10);
-          setHasSubmittedAnswer(false);
-          setSelectedAnswer('');
-          setQuizStartTime(Date.now());
-        }
+        const s = payload.new;
+        setCurrentAdminQuizId(s.current_quiz_id);
+        setAdminShowAnswer(s.show_answer);
+        setQuizTimer(10);
+        setHasSubmittedAnswer(false);
+        setSelectedAnswer('');
+        setQuizStartTime(Date.now());
       })
       .subscribe();
 
@@ -1101,33 +1097,54 @@ export default function App() {
                     </h4>
                     <p className="text-xs text-slate-400 mb-6">부서 내 구성원의 소통, 업무, 성장, 자율, 효율, 문화의 대칭적 가치관 조감도</p>
                     
-                    <div className="space-y-5">
-                      {Object.entries(stats.balanceStats).map(([cat, val]) => {
-                        const total = val.A + val.B;
-                        const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
-                        const rateB = total > 0 ? 100 - rateA : 50;
-
-                        return (
-                          <div key={cat} className="space-y-2">
-                            <div className="flex justify-between text-xs font-bold">
-                              <span className="text-emerald-600">성향 A군 ({rateA}%)</span>
-                              <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
-                              <span className="text-cyan-600">성향 B군 ({rateB}%)</span>
-                            </div>
-                            <div className="relative w-full h-5 bg-slate-100 rounded-md overflow-hidden flex animate-fadeIn">
-                              <div 
-                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 border-r border-white/40" 
-                                style={{ width: `${rateA}%` }} 
-                              />
-                              <div 
-                                className="h-full bg-gradient-to-r from-cyan-300 to-cyan-400" 
-                                style={{ width: `${rateB}%` }} 
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const BALANCE_LABELS = {
+                        "소통": { A: "지시·직접형", B: "합의·공감형" },
+                        "업무": { A: "안정·전문형", B: "도전·유연형" },
+                        "성장": { A: "실무·성과형", B: "비전·균형형" },
+                        "자율": { A: "구조·규정형", B: "자율·유연형" },
+                        "효율": { A: "절차·정확형", B: "속도·실용형" },
+                        "문화": { A: "결속·공동체형", B: "개인·실속형" },
+                      };
+                      return (
+                        <div className="space-y-5">
+                          {Object.entries(stats.balanceStats).map(([cat, val]) => {
+                            const total = val.A + val.B;
+                            const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
+                            const rateB = total > 0 ? 100 - rateA : 50;
+                            const labels = BALANCE_LABELS[cat] || { A: "A형", B: "B형" };
+                            const dominant = rateA >= rateB ? 'A' : 'B';
+                            return (
+                              <div key={cat} className="space-y-1.5">
+                                <div className="flex justify-between items-center text-xs font-bold">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="text-emerald-600">{labels.A}</span>
+                                    <span className="text-emerald-500 font-black">({rateA}%)</span>
+                                    {dominant === 'A' && <span className="text-[9px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">우세</span>}
+                                  </div>
+                                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
+                                  <div className="flex items-center space-x-1.5">
+                                    {dominant === 'B' && <span className="text-[9px] bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded-full font-bold">우세</span>}
+                                    <span className="text-cyan-500 font-black">({rateB}%)</span>
+                                    <span className="text-cyan-600">{labels.B}</span>
+                                  </div>
+                                </div>
+                                <div className="relative w-full h-5 bg-slate-100 rounded-md overflow-hidden flex">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 border-r border-white/40"
+                                    style={{ width: `${rateA}%` }}
+                                  />
+                                  <div
+                                    className="h-full bg-gradient-to-r from-cyan-300 to-cyan-400"
+                                    style={{ width: `${rateB}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 구매계약실 MBTI 분포 */}
@@ -1328,12 +1345,7 @@ export default function App() {
                     <CheckCircle className="w-10 h-10 text-cyan-500 mx-auto mb-2" />
                     <p className="font-bold text-slate-700">답안 제출을 완료했습니다!</p>
                     <p className="text-xs text-slate-400 mt-1">관리자가 정답과 분포를 오픈할 때까지 잠시 대기해주세요.</p>
-                    {selectedAnswer && (
-                      <div className="mt-3 inline-block bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2">
-                        <p className="text-xs text-slate-500 font-semibold">제출한 답안</p>
-                        <p className="text-base font-black text-cyan-700 mt-0.5">{selectedAnswer}</p>
-                      </div>
-                    )}
+                    <p className="text-xs text-cyan-600 font-bold mt-2">선택한 답안: {selectedAnswer}</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1441,35 +1453,13 @@ export default function App() {
 
               {/* 관리자가 정답을 공개한 경우 */}
               {adminShowAnswer && (
-                <div className={`border rounded-2xl p-5 ${
-                  !selectedAnswer
-                    ? 'bg-slate-50 border-slate-200'
-                    : selectedAnswer.trim().toLowerCase() === currentQuiz.answer.trim().toLowerCase()
-                      ? 'bg-emerald-50 border-emerald-200'
-                      : 'bg-rose-50 border-rose-200'
-                }`}>
-                  <div className={`flex items-center space-x-2 font-extrabold text-sm mb-2 ${
-                    !selectedAnswer ? 'text-slate-600'
-                      : selectedAnswer.trim().toLowerCase() === currentQuiz.answer.trim().toLowerCase()
-                        ? 'text-emerald-700' : 'text-rose-700'
-                  }`}>
-                    <CheckCircle className="w-5 h-5" />
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+                  <div className="flex items-center space-x-2 text-emerald-700 font-extrabold text-sm mb-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
                     <span>출제자 정답 공개</span>
                   </div>
-                  <p className="text-base font-bold text-slate-800">
-                    정답은 바로 [ {currentQuiz.answer} ] 입니다!
-                  </p>
-                  {!selectedAnswer ? (
-                    <p className="text-xs text-slate-400 mt-1 font-semibold">⚠️ 미제출 (시간 초과 또는 미응답)</p>
-                  ) : selectedAnswer.trim().toLowerCase() === currentQuiz.answer.trim().toLowerCase() ? (
-                    <p className="text-xs text-emerald-700 font-bold mt-1">
-                      내가 입력한 답: {selectedAnswer} &nbsp;⭕ 정답입니다!
-                    </p>
-                  ) : (
-                    <p className="text-xs text-rose-600 font-bold mt-1">
-                      내가 입력한 답: {selectedAnswer} &nbsp;❌ 오답입니다.
-                    </p>
-                  )}
+                  <p className="text-base font-bold text-emerald-900">정답은 바로 [ {currentQuiz.answer} ] 입니다!</p>
+                  <p className="text-xs text-emerald-600 mt-1">내가 입력한 답: {selectedAnswer} {selectedAnswer === currentQuiz.answer ? '⭕ (정답)' : '❌ (오답)'}</p>
                 </div>
               )}
 
