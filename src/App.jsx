@@ -891,73 +891,156 @@ export default function App() {
                             : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                           }`}
                       >
-                        <span className="text-lg">{['😞','😕','😐','🙂','😄'][val-1]}</span>
-                        <span>{val}</span>
-                        <span className="text-[10px] font-semibold">{['매우불만','불만','보통','만족','매우만족'][val-1]}</span>
+                        <span className="text-base md:text-lg">{val}</span>
+                        <span className="text-[10px] md:text-xs">
+                          {val === 1 ? "매우반대" : val === 3 ? "보통" : val === 5 ? "매우찬성" : ""}
+                        </span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* 2. 밸런스 게임 (10~44번 슬라이드) */}
+              {/* 2. 조직문화 밸런스 게임 (10~44번 슬라이드) */}
               {currentSurveyStep >= 10 && currentSurveyStep < 45 && (() => {
-                const q = BALANCE_QUESTIONS[currentSurveyStep - 10];
+                const balanceIndex = currentSurveyStep - 10;
+                const currentBalanceQ = BALANCE_QUESTIONS[balanceIndex];
+                const selectedVal = tempAnswers[`bal_${currentBalanceQ.id}`];
+
                 return (
                   <div className="py-6 space-y-6">
                     <div className="text-center">
                       <span className="bg-cyan-50 text-cyan-600 text-xs px-3 py-1.5 rounded-full font-bold">
-                        밸런스 게임 ({q.category} 부문)
+                        조직문화 밸런스 게임 ({currentBalanceQ.category})
                       </span>
-                      <h4 className="text-lg md:text-2xl font-extrabold text-slate-800 mt-5 leading-snug">{q.text}</h4>
+                      <h4 className="text-lg md:text-2xl font-extrabold text-slate-800 mt-5 leading-snug">
+                        {currentBalanceQ.text}
+                      </h4>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 pt-4">
-                      {[{ label: 'A', text: q.optionA }, { label: 'B', text: q.optionB }].map(opt => (
-                        <button
-                          key={opt.label}
-                          onClick={() => {
-                            setTempAnswers(prev => ({ ...prev, [`bal_${q.id}`]: opt.label }));
-                            setTimeout(() => setCurrentSurveyStep(prev => prev + 1), 300);
-                          }}
-                          className={`py-6 px-4 rounded-2xl border-2 text-sm font-bold transition-all flex flex-col items-center justify-center space-y-2 min-h-[120px]
-                            ${tempAnswers[`bal_${q.id}`] === opt.label
-                              ? 'bg-cyan-500 border-cyan-500 text-white shadow-md'
-                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                            }`}
-                        >
-                          <span className="text-2xl font-black">{opt.label}</span>
-                          <span className="leading-snug text-center">{opt.text}</span>
-                        </button>
-                      ))}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
+                      <button
+                        onClick={() => handleBalanceSelect('A')}
+                        className={`p-6 rounded-xl border text-left font-bold text-sm md:text-base transition-all relative flex flex-col justify-between group h-28
+                          ${selectedVal === 'A' 
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-200' 
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                      >
+                        <span className="text-xs text-emerald-500 font-bold mb-2">선택 A</span>
+                        <span className="group-hover:translate-x-1 transition-transform">{currentBalanceQ.optionA}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleBalanceSelect('B')}
+                        className={`p-6 rounded-xl border text-left font-bold text-sm md:text-base transition-all relative flex flex-col justify-between group h-28
+                          ${selectedVal === 'B' 
+                            ? 'bg-cyan-50 border-cyan-500 text-cyan-800 ring-2 ring-cyan-200' 
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                      >
+                        <span className="text-xs text-cyan-500 font-bold mb-2">선택 B</span>
+                        <span className="group-hover:translate-x-1 transition-transform">{currentBalanceQ.optionB}</span>
+                      </button>
                     </div>
                   </div>
                 );
               })()}
 
+              {/* 3. VOC 및 최종 접수 (45번 슬라이드) */}
+              {currentSurveyStep === 45 && (
+                <div className="py-6 space-y-6">
+                  <div className="text-center">
+                    <span className="bg-purple-50 text-purple-600 text-xs px-3 py-1.5 rounded-full font-bold">VOC 서술형 (선택)</span>
+                    <h4 className="text-lg md:text-2xl font-extrabold text-slate-800 mt-5 leading-snug">
+                      기타 구매계약실에 제안하고 싶은 조직혁신 의견을 입력해주세요.
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-2">이 항목은 입력을 건너뛰어도 좋습니다.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <textarea
+                      value={vocText}
+                      onChange={(e) => setVocText(e.target.value)}
+                      placeholder="자유롭게 건의하고 싶으신 수평문화 제안, 프로세스 고충 및 제언을 자유롭게 적어주세요."
+                      rows={5}
+                      className="w-full border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200/80 outline-none rounded-xl p-4 text-sm transition-all bg-slate-50/50"
+                    />
+
+                    <div className="flex space-x-3">
+                      <button
+                        onClick={() => {
+                          setVocText('');
+                          submitSurvey();
+                        }}
+                        className="flex-1 border border-slate-200 hover:bg-slate-100 text-slate-500 font-bold py-3 px-4 rounded-xl transition-all"
+                      >
+                        건너뛰기 & 완료
+                      </button>
+                      <button
+                        onClick={submitSurvey}
+                        className="flex-1 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:brightness-105 transition-all flex items-center justify-center space-x-1"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>의견 제출하기</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-      )}
+        )}
 
-      {/* === PART 1 어드민 대시보드 뷰 === */}
-      {currentView === 'adminDashboard' && (() => {
-        const stats = calcStats();
-        return (
-          <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-            <div className="max-w-5xl mx-auto space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black text-slate-800">📊 구매계약실 워크샵 대시보드</h2>
-                <button onClick={() => setCurrentView('main')} className="text-xs text-slate-500 hover:text-slate-700 font-bold underline">← 메인으로</button>
+        {/* ======================================= */}
+        {/* VIEW 4: PART 1 RESULT & AI DASHBOARD     */}
+        {/* ======================================= */}
+        {currentView === 'part1-result' && (
+          <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-800 flex flex-wrap items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-emerald-500" />
+                  <span>조직혁신 설문 결과 대시보드</span>
+                  <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full">
+                    총 {surveyResults.length}명 참여
+                  </span>
+                </h3>
+                <p className="text-slate-500 text-sm mt-1">소중한 구매계약원의 피드백을 실시간 집계합니다.</p>
               </div>
-                <div className="space-y-8">
-                  {/* 상단: 만족도 평점 & 밸런스 지형도 (동일 크기, 좌우 배치) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+              <div className="flex space-x-2 w-full sm:w-auto">
+                <button 
+                  onClick={() => setCurrentView('main')}
+                  className="flex-1 sm:flex-none border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold py-2 px-4 rounded-lg text-sm transition-all"
+                >
+                  홈으로
+                </button>
+              </div>
+            </div>
+
+            {surveyResults.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-400">
+                <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+                <p className="font-semibold text-lg">아직 제출된 설문 결과가 없습니다.</p>
+                <p className="text-sm text-slate-400 mt-1">첫 번째 가치진단 설문조사를 먼저 완료해주세요!</p>
+              </div>
+            ) : (() => {
+              const stats = calculateSurveyStats();
+              if (!stats) return null;
+
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* 왼쪽 단: 통계 차트 지형도 (2칸 차지) */}
+                  <div className="lg:col-span-2 space-y-6">
+                    
                     {/* 부문별 만족도 평점 레이아웃 */}
-                    <div className="h-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                       <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2 flex items-center space-x-1.5">
-                        <Smile className="w-5 h-5 text-emerald-500" />
+                        <Smile className="w-4.5 h-4.5 text-emerald-500" />
                         <span>부문별 구매 만족도 평점 (5점 리커트)</span>
                       </h4>
-                      <div className="space-y-4 flex-1">
+                      <div className="space-y-4">
                         {Object.entries(stats.satisfactionScores).map(([cat, score]) => {
                           const percentage = (Number(score) / 5) * 100;
                           return (
@@ -979,13 +1062,14 @@ export default function App() {
                     </div>
 
                     {/* 6대 부문 밸런스 게임 성향 지형도 */}
-                    <div className="h-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                       <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2 flex items-center space-x-1.5">
-                        <BarChart3 className="w-5 h-5 text-cyan-500" />
+                        <BarChart3 className="w-4.5 h-4.5 text-cyan-500" />
                         <span>6대 핵심 성향 밸런스 지형도</span>
                       </h4>
-                      <p className="text-xs text-slate-400 mb-6">구매계약실 내 균형 성향 데이터를 한눈에 확인하세요.</p>
-                      <div className="space-y-5 flex-1">
+                      <p className="text-xs text-slate-400 mb-6">부서 내 구성원의 소통, 업무, 성장, 자율, 효율, 문화의 대칭적 가치관 조감도</p>
+                      
+                      <div className="space-y-5">
                         {Object.entries(stats.balanceStats).map(([cat, val]) => {
                           const total = val.A + val.B;
                           const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
@@ -1013,41 +1097,42 @@ export default function App() {
                         })}
                       </div>
                     </div>
-                  </div>
 
-                  {/* 중간: MBTI 분포 & VOC 종합 (동일 크기, 좌우 배치) */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="h-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
-                      <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">구매계약실 MBTI 분포</h4>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
-                          <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
-                            <span>{m}</span>
-                            <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
-                          </span>
-                        ))}
+                    {/* MBTI 및 VOC 집계 리스트 */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                        <h4 className="text-sm font-bold text-slate-700 mb-3">구매계약실 MBTI 분포</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
+                            <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
+                              <span>{m}</span>
+                              <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                        <h4 className="text-sm font-bold text-slate-700 mb-3">종합 VOC 키워드 (최근)</h4>
+                        <div className="max-h-[150px] overflow-y-auto space-y-2 pr-1 text-xs">
+                          {surveyResults.map(r => r.voc).filter(v => v).length === 0 ? (
+                            <p className="text-slate-400">아직 접수된 서술형 VOC가 없습니다.</p>
+                          ) : (
+                            surveyResults.map((res, i) => (
+                              <div key={i} className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-slate-600 leading-normal">
+                                "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- 익명 ({res.mbti})</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="h-full bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
-                      <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">종합 VOC 키워드 (최근)</h4>
-                      <div className="max-h-[150px] overflow-y-auto space-y-2 pr-1 text-xs pt-2 flex-1">
-                        {surveyResults.map(r => r.voc).filter(v => v).length === 0 ? (
-                          <p className="text-slate-400">아직 접수된 서술형 VOC가 없습니다.</p>
-                        ) : (
-                          surveyResults.map((res, i) => (
-                            <div key={i} className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-slate-600 leading-normal">
-                              "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- 익명 ({res.mbti})</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* 하단: AI 리포트 (전체 너비 차지) */}
-                  <div className="w-full">
-                    <div className="bg-gradient-to-b from-cyan-50/70 to-emerald-50/40 border border-emerald-100 rounded-2xl p-6 shadow-sm min-h-[300px] flex flex-col justify-between">
+                  {/* 오른쪽 단: AI 분석 보고서 (1칸 차지) */}
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-b from-cyan-50/70 to-emerald-50/40 border border-emerald-100 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
                       <div>
                         <div className="flex items-center space-x-2 text-emerald-600 font-extrabold text-sm mb-4">
                           <Sparkles className="w-5 h-5 animate-spin" />
@@ -1076,13 +1161,15 @@ export default function App() {
                           </div>
                         )}
                       </div>
+
+
                     </div>
                   </div>
                 </div>
-            </div>
+              );
+            })()}
           </div>
-        )
-      })()}
+        )}
 
         {/* ======================================= */}
         {/* VIEW 5: PART 2 JOIN (실시간 퀴즈 등록)    */}
@@ -1288,7 +1375,7 @@ export default function App() {
               <div>
                 <h3 className="text-2xl font-bold text-slate-800 flex items-center space-x-2">
                   <Award className="w-6 h-6 text-cyan-500" />
-                  <span>PART 2. 리더보드</span>
+                  <span>실시간 수료평가 리더보드</span>
                 </h3>
                 <p className="text-slate-500 text-sm mt-1">풀이 점수 가중치와 완료 스피드를 종합하여 최종 Top 5를 선정합니다.</p>
               </div>
