@@ -360,7 +360,7 @@ export default function App() {
     if (!stats) return;
 
     setIsAiAnalyzing(true);
-    const apiKey = ""; 
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""
     
     const systemPrompt = `당신은 최신 조직문화 평가 전문가이자 구매계약실의 조직문화 자문위원입니다. 제공되는 통계 데이터를 기반으로 불필요한 미사여구를 완벽히 제거하고 비즈니스 실천 중심의 핵심 요약 보고서(Markdown 형식)를 작성해주세요.`;
     const userQuery = `
