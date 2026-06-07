@@ -1097,33 +1097,55 @@ export default function App() {
                     </h4>
                     <p className="text-xs text-slate-400 mb-6">부서 내 구성원의 소통, 업무, 성장, 자율, 효율, 문화의 대칭적 가치관 조감도</p>
                     
-                    <div className="space-y-5">
-                      {Object.entries(stats.balanceStats).map(([cat, val]) => {
-                        const total = val.A + val.B;
-                        const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
-                        const rateB = total > 0 ? 100 - rateA : 50;
+                    {(() => {
+                      const BALANCE_LABELS = {
+                        "소통": { A: "지시·직접형", B: "합의·공감형" },
+                        "업무": { A: "안정·전문형", B: "도전·유연형" },
+                        "성장": { A: "실무·성과형", B: "비전·균형형" },
+                        "자율": { A: "구조·규정형", B: "자율·유연형" },
+                        "효율": { A: "절차·정확형", B: "속도·실용형" },
+                        "문화": { A: "결속·공동체형", B: "개인·실속형" },
+                      };
+                      return (
+                        <div className="space-y-5">
+                          {Object.entries(stats.balanceStats).map(([cat, val]) => {
+                            const total = val.A + val.B;
+                            const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
+                            const rateB = total > 0 ? 100 - rateA : 50;
+                            const labels = BALANCE_LABELS[cat] || { A: "A형", B: "B형" };
+                            const dominant = rateA >= rateB ? 'A' : 'B';
 
-                        return (
-                          <div key={cat} className="space-y-2">
-                            <div className="flex justify-between text-xs font-bold">
-                              <span className="text-emerald-600">성향 A군 ({rateA}%)</span>
-                              <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
-                              <span className="text-cyan-600">성향 B군 ({rateB}%)</span>
-                            </div>
-                            <div className="relative w-full h-5 bg-slate-100 rounded-md overflow-hidden flex animate-fadeIn">
-                              <div 
-                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 border-r border-white/40" 
-                                style={{ width: `${rateA}%` }} 
-                              />
-                              <div 
-                                className="h-full bg-gradient-to-r from-cyan-300 to-cyan-400" 
-                                style={{ width: `${rateB}%` }} 
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                            return (
+                              <div key={cat} className="space-y-1.5">
+                                <div className="flex justify-between items-center text-xs font-bold">
+                                  <div className="flex items-center space-x-1.5">
+                                    <span className="text-emerald-600">{labels.A}</span>
+                                    <span className="text-emerald-500 font-black">({rateA}%)</span>
+                                    {dominant === 'A' && <span className="text-[9px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">우세</span>}
+                                  </div>
+                                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
+                                  <div className="flex items-center space-x-1.5">
+                                    {dominant === 'B' && <span className="text-[9px] bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded-full font-bold">우세</span>}
+                                    <span className="text-cyan-500 font-black">({rateB}%)</span>
+                                    <span className="text-cyan-600">{labels.B}</span>
+                                  </div>
+                                </div>
+                                <div className="relative w-full h-5 bg-slate-100 rounded-md overflow-hidden flex animate-fadeIn">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 border-r border-white/40"
+                                    style={{ width: `${rateA}%` }}
+                                  />
+                                  <div
+                                    className="h-full bg-gradient-to-r from-cyan-300 to-cyan-400"
+                                    style={{ width: `${rateB}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 구매계약실 MBTI 분포 */}
