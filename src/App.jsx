@@ -1740,25 +1740,82 @@ export default function App() {
                     const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
                     if (!activeQuiz) return <p className="text-slate-400 text-xs">등록된 퀴즈가 없습니다.</p>;
 
-                    const totalResponses = quizResponses.filter(r => r.quiz_id === activeQuiz.id).length;
-                    const correctResponses = quizResponses.filter(r => r.quiz_id === activeQuiz.id && r.is_correct).length;
+                    const responsesForQ = quizResponses.filter(r => r.quiz_id === activeQuiz.id);
+                    const totalResponses = responsesForQ.length;
+                    const correctCount = responsesForQ.filter(r => r.is_correct).length;
+                    const incorrectCount = totalResponses - correctCount;
+                    const correctRate = totalResponses > 0 ? Math.round((correctCount / totalResponses) * 100) : 0;
+                    const incorrectRate = totalResponses > 0 ? 100 - correctRate : 0;
 
                     return (
                       <div className="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
-                            <h5 className="font-extrabold text-slate-800 text-base mt-2">Q{activeQuiz.id}. {activeQuiz.question}</h5>
-                            <p className="text-xs text-slate-400 mt-1">정답: {activeQuiz.answer} / 배점: {activeQuiz.score}점 / 유형: {activeQuiz.type === 'choice' ? '객관식' : activeQuiz.type === 'ox' ? 'OX' : '주관식'}</p>
+
+                        {/* 문제 정보 */}
+                        <div>
+                          <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
+                          <h5 className="font-extrabold text-slate-800 text-base mt-2">Q{activeQuiz.id}. {activeQuiz.question}</h5>
+                          <p className="text-xs text-slate-400 mt-1">정답: {activeQuiz.answer} / 배점: {activeQuiz.score}점 / 유형: {activeQuiz.type === 'choice' ? '객관식' : activeQuiz.type === 'ox' ? 'OX' : '주관식'}</p>
+                        </div>
+
+                        {/* 실시간 제출 완료인원 카운터 */}
+                        <div className="bg-white border border-cyan-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                            <span className="text-xs font-bold text-slate-600">실시간 제출 완료인원</span>
+                          </div>
+                          <div className="flex items-baseline space-x-1">
+                            <span className="text-2xl font-black text-cyan-600">{totalResponses}</span>
+                            <span className="text-xs text-slate-400 font-bold">명</span>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 pt-2">
+                        {/* 정답 공개 전: 제출 현황만 표시 / 공개 후: 정답·오답 비율 */}
+                        {!adminShowAnswer ? (
+                          totalResponses > 0 && (
+                            <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+                              <p className="text-[11px] font-bold text-slate-400">제출 현황 (정답 공개 전)</p>
+                              <div className="flex items-center space-x-2">
+                                <div className="flex-1 bg-slate-100 h-3 rounded-full overflow-hidden">
+                                  <div className="h-full bg-cyan-400 rounded-full" style={{ width: '100%' }} />
+                                </div>
+                                <span className="text-xs font-bold text-cyan-600 w-10 text-right">{totalResponses}명</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400">※ 정답/오답 비율은 정답 공개 후 표시됩니다.</p>
+                            </div>
+                          )
+                        ) : (
+                          <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                            <p className="text-[11px] font-bold text-slate-500 flex items-center space-x-1">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>정답 공개 후 최종 결과</span>
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+                                <p className="text-[11px] text-emerald-600 font-bold mb-1">정답자</p>
+                                <p className="text-xl font-black text-emerald-700">{correctCount}명</p>
+                                <p className="text-[10px] text-emerald-500 font-bold">{correctRate}%</p>
+                              </div>
+                              <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-center">
+                                <p className="text-[11px] text-rose-600 font-bold mb-1">오답자</p>
+                                <p className="text-xl font-black text-rose-700">{incorrectCount}명</p>
+                                <p className="text-[10px] text-rose-500 font-bold">{incorrectRate}%</p>
+                              </div>
+                            </div>
+                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
+                              <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${correctRate}%` }} />
+                              <div className="h-full bg-rose-400 transition-all duration-700" style={{ width: `${incorrectRate}%` }} />
+                            </div>
+                            <p className="text-[10px] text-slate-400 text-center">총 {totalResponses}명 제출 · 정답률 {correctRate}%</p>
+                          </div>
+                        )}
+
+                        {/* 정답 공개 버튼 */}
+                        <div className="pt-1">
                           <button
                             onClick={() => {
                               const nextAnswerState = !adminShowAnswer;
-                              const confirmMsg = nextAnswerState 
-                                ? "정말 정답을 공개하시겠습니까?" 
+                              const confirmMsg = nextAnswerState
+                                ? "정말 정답을 공개하시겠습니까?"
                                 : "정답을 다시 숨기시겠습니까?";
                               if (window.confirm(confirmMsg)) {
                                 updateAdminStatus(currentAdminQuizId, nextAnswerState);
@@ -1770,25 +1827,8 @@ export default function App() {
                             <CheckCircle className="w-3.5 h-3.5" />
                             <span>{adminShowAnswer ? "정답 다시 숨기기" : "정답 전면 공개하기"}</span>
                           </button>
-
-                          <div className="bg-white border border-slate-200 rounded-lg px-3 py-1 text-xs font-bold text-slate-600 flex items-center space-x-1.5">
-                            <span>현재 제출 완료인원:</span>
-                            <span className="text-cyan-600">{totalResponses}명</span>
-                          </div>
                         </div>
 
-                        {/* 정답 비율 미니 차트 */}
-                        {totalResponses > 0 && (
-                          <div className="bg-white border border-slate-200/80 p-3 rounded-lg text-xs space-y-2">
-                            <div className="flex justify-between text-[11px] font-bold">
-                              <span className="text-slate-500">실시간 정확도</span>
-                              <span className="text-emerald-600">{Math.round((correctResponses/totalResponses)*100)}% ({correctResponses}/{totalResponses}명)</span>
-                            </div>
-                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                              <div className="h-full bg-emerald-500" style={{ width: `${(correctResponses/totalResponses)*100}%` }} />
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })()}
