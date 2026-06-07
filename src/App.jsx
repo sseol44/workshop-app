@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // === SUPABASE 설정 ===
 // Vercel 환경변수를 사용하거나, 아래에 직접 값을 입력하세요
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://여기에_프로젝트_URL.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '여기에_anon_public_key';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 import { 
   Users, HelpCircle, BarChart3, Settings, LogIn, ChevronRight, ChevronLeft, 
