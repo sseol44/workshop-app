@@ -746,7 +746,7 @@ export default function App() {
                   <div className="bg-cyan-50 text-cyan-600 w-12 h-12 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <HelpCircle className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800 mb-2">PART 2. 워크숍 수료평가</h3>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">PART 2. 워크숍 수료 평가 퀴즈</h3>
                   <p className="text-slate-500 text-sm leading-relaxed">
                     상하반기 업무 역량과 워크숍 지식을 다루는 실시간 동기화 스피드 퀴즈! 빠른 답안 제출과 고득점으로 당당히 1등에 도전해 보세요.
                   </p>
@@ -1001,7 +1001,7 @@ export default function App() {
               <div>
                 <h3 className="text-2xl font-bold text-slate-800 flex flex-wrap items-center gap-2">
                   <BarChart3 className="w-6 h-6 text-emerald-500" />
-                  <span>PART 1.조직개선 설문결과 대시보드</span>
+                  <span>조직혁신 설문 결과 대시보드</span>
                   <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full">
                     총 {surveyResults.length}명 참여
                   </span>
@@ -1031,139 +1031,130 @@ export default function App() {
 
               return (
                 <div className="space-y-6">
-                  {/* 통계 차트 지형도 */}
-                  <>
+
+                  {/* 부문별 만족도 평점 */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2 flex items-center space-x-1.5">
+                      <Smile className="w-4.5 h-4.5 text-emerald-500" />
+                      <span>부문별 구매 만족도 평점 (5점 리커트)</span>
+                    </h4>
+                    <div className="space-y-4">
+                      {Object.entries(stats.satisfactionScores).map(([cat, score]) => {
+                        const percentage = (Number(score) / 5) * 100;
+                        return (
+                          <div key={cat} className="space-y-1.5">
+                            <div className="flex justify-between text-xs font-bold">
+                              <span className="text-slate-600">{cat} 부문</span>
+                              <span className="text-slate-800">{score} / 5.00</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 6대 부문 밸런스 게임 성향 지형도 */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                    <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2 flex items-center space-x-1.5">
+                      <BarChart3 className="w-4.5 h-4.5 text-cyan-500" />
+                      <span>6대 핵심 성향 밸런스 지형도</span>
+                    </h4>
+                    <p className="text-xs text-slate-400 mb-6">부서 내 구성원의 소통, 업무, 성장, 자율, 효율, 문화의 대칭적 가치관 조감도</p>
                     
-                    {/* 부문별 만족도 평점 레이아웃 */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                      <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2 flex items-center space-x-1.5">
-                        <Smile className="w-4.5 h-4.5 text-emerald-500" />
-                        <span>부문별 구매 만족도 평점 (5점 리커트)</span>
-                      </h4>
-                      <div className="space-y-4">
-                        {Object.entries(stats.satisfactionScores).map(([cat, score]) => {
-                          const percentage = (Number(score) / 5) * 100;
-                          return (
-                            <div key={cat} className="space-y-1.5">
-                              <div className="flex justify-between text-xs font-bold">
-                                <span className="text-slate-600">{cat} 부문</span>
-                                <span className="text-slate-800">{score} / 5.00</span>
-                              </div>
-                              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-full"
-                                  style={{ width: `${percentage}%` }}
-                                />
-                              </div>
+                    <div className="space-y-5">
+                      {Object.entries(stats.balanceStats).map(([cat, val]) => {
+                        const total = val.A + val.B;
+                        const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
+                        const rateB = total > 0 ? 100 - rateA : 50;
+
+                        return (
+                          <div key={cat} className="space-y-2">
+                            <div className="flex justify-between text-xs font-bold">
+                              <span className="text-emerald-600">성향 A군 ({rateA}%)</span>
+                              <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
+                              <span className="text-cyan-600">성향 B군 ({rateB}%)</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* 6대 부문 밸런스 게임 성향 지형도 */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                      <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2 flex items-center space-x-1.5">
-                        <BarChart3 className="w-4.5 h-4.5 text-cyan-500" />
-                        <span>6대 핵심 성향 밸런스 지형도</span>
-                      </h4>
-                      <p className="text-xs text-slate-400 mb-6">부서 내 구성원의 소통, 업무, 성장, 자율, 효율, 문화의 대칭적 가치관 조감도</p>
-                      
-                      <div className="space-y-5">
-                        {Object.entries(stats.balanceStats).map(([cat, val]) => {
-                          const total = val.A + val.B;
-                          const rateA = total > 0 ? Math.round((val.A / total) * 100) : 50;
-                          const rateB = total > 0 ? 100 - rateA : 50;
-
-                          return (
-                            <div key={cat} className="space-y-2">
-                              <div className="flex justify-between text-xs font-bold">
-                                <span className="text-emerald-600">성향 A군 ({rateA}%)</span>
-                                <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
-                                <span className="text-cyan-600">성향 B군 ({rateB}%)</span>
-                              </div>
-                              <div className="relative w-full h-5 bg-slate-100 rounded-md overflow-hidden flex animate-fadeIn">
-                                <div 
-                                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 border-r border-white/40" 
-                                  style={{ width: `${rateA}%` }} 
-                                />
-                                <div 
-                                  className="h-full bg-gradient-to-r from-cyan-300 to-cyan-400" 
-                                  style={{ width: `${rateB}%` }} 
-                                />
-                              </div>
+                            <div className="relative w-full h-5 bg-slate-100 rounded-md overflow-hidden flex animate-fadeIn">
+                              <div 
+                                className="h-full bg-gradient-to-r from-emerald-400 to-emerald-300 border-r border-white/40" 
+                                style={{ width: `${rateA}%` }} 
+                              />
+                              <div 
+                                className="h-full bg-gradient-to-r from-cyan-300 to-cyan-400" 
+                                style={{ width: `${rateB}%` }} 
+                              />
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
-
-                    {/* MBTI */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                      <h4 className="text-sm font-bold text-slate-700 mb-3">구매계약실 MBTI 분포</h4>
-                        <div className="flex flex-wrap gap-2">
-                         {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
-                           <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
-                             <span>{m}</span>
-                             <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
-                           </span>
-                         ))}
-                        </div>
-                      </>
-
-                    {/* VOC */}
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                        <h4 className="text-sm font-bold text-slate-700 mb-3">종합 VOC 키워드 (최근)</h4>
-                        <div className="max-h-[150px] overflow-y-auto space-y-2 pr-1 text-xs">
-                          {surveyResults.map(r => r.voc).filter(v => v).length === 0 ? (
-                            <p className="text-slate-400">아직 접수된 서술형 VOC가 없습니다.</p>
-                          ) : (
-                            surveyResults.map((res, i) => (
-                              <div key={i} className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-slate-600 leading-normal">
-                                "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- 익명 ({res.mbti})</span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
                   </div>
 
-                  {/* AI 분석 보고서 */}
-                    <div className="bg-gradient-to-b from-cyan-50/70 to-emerald-50/40 border border-emerald-100 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center space-x-2 text-emerald-600 font-extrabold text-sm mb-4">
-                          <Sparkles className="w-5 h-5 animate-spin" />
-                          <span>Gemini 2.5 실시간 AI 리포트</span>
-                        </div>
-                        
-                        {isAiAnalyzing ? (
-                          <div className="space-y-4 py-8 text-center text-slate-400">
-                            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500" />
-                            <p className="text-sm font-semibold">Gemini가 최신 조직평가 기법을 기반으로<br/>구매계약실 데이터셋을 분석하는 중입니다...</p>
-                          </div>
-                        ) : aiReport ? (
-                          <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed text-xs max-h-[500px] overflow-y-auto pr-2 space-y-3">
-                            <div className="text-[10px] text-slate-400 font-bold mb-2">분석일자: {aiReport.generatedAt}</div>
-                            {aiReport.content.split('\n').map((line, idx) => {
-                              if (line.startsWith('【') || line.startsWith('###') || line.startsWith('**') || line.startsWith('1.') || line.startsWith('2.') || line.startsWith('3.')) {
-                                return <h5 key={idx} className="font-extrabold text-slate-800 mt-4 mb-2 text-sm">{line.replace(/[\*#【】]/g, '')}</h5>;
-                              }
-                              return <p key={idx} className="mb-1 text-slate-600">{line.replace(/\*/g, '')}</p>;
-                            })}
-                          </div>
-                        ) : (
-                          <div className="py-10 text-center text-slate-400">
-                            <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                            <p className="text-sm font-bold">아직 생성된 AI 분석이 없습니다.</p>
-                          </div>
-                        )}
-                      </div>
-
-
+                  {/* 구매계약실 MBTI 분포 */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                    <h4 className="text-sm font-bold text-slate-700 mb-3">구매계약실 MBTI 분포</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
+                        <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
+                          <span>{m}</span>
+                          <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
+                        </span>
+                      ))}
                     </div>
                   </div>
+
+                  {/* Gemini AI 분석 보고서 */}
+                  <div className="bg-gradient-to-b from-cyan-50/70 to-emerald-50/40 border border-emerald-100 rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-center space-x-2 text-emerald-600 font-extrabold text-sm mb-4">
+                      <Sparkles className="w-5 h-5 animate-spin" />
+                      <span>Gemini 2.5 실시간 AI 리포트</span>
+                    </div>
+                    
+                    {isAiAnalyzing ? (
+                      <div className="space-y-4 py-8 text-center text-slate-400">
+                        <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500" />
+                        <p className="text-sm font-semibold">Gemini가 최신 조직평가 기법을 기반으로<br/>구매계약실 데이터셋을 분석하는 중입니다...</p>
+                      </div>
+                    ) : aiReport ? (
+                      <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed text-xs pr-2 space-y-3">
+                        <div className="text-[10px] text-slate-400 font-bold mb-2">분석일자: {aiReport.generatedAt}</div>
+                        {aiReport.content.split('\n').map((line, idx) => {
+                          if (line.startsWith('【') || line.startsWith('###') || line.startsWith('**') || line.startsWith('1.') || line.startsWith('2.') || line.startsWith('3.')) {
+                            return <h5 key={idx} className="font-extrabold text-slate-800 mt-4 mb-2 text-sm">{line.replace(/[\*#【】]/g, '')}</h5>;
+                          }
+                          return <p key={idx} className="mb-1 text-slate-600">{line.replace(/\*/g, '')}</p>;
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center text-slate-400">
+                        <Sparkles className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                        <p className="text-sm font-bold">아직 생성된 AI 분석이 없습니다.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 종합 VOC 키워드 */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                    <h4 className="text-sm font-bold text-slate-700 mb-3">종합 VOC 키워드 (최근)</h4>
+                    <div className="space-y-2 text-xs">
+                      {surveyResults.map(r => r.voc).filter(v => v).length === 0 ? (
+                        <p className="text-slate-400">아직 접수된 서술형 VOC가 없습니다.</p>
+                      ) : (
+                        surveyResults.map((res, i) => (
+                          <div key={i} className="bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-slate-600 leading-normal">
+                            "{res.voc}" <span className="text-[10px] text-slate-400 block mt-1">- 익명 ({res.mbti})</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               );
             })()}
@@ -1599,7 +1590,7 @@ export default function App() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-2 gap-2">
                 <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2">
                   <HelpCircle className="w-5 h-5 text-cyan-500" />
-                  <span>PART 2. 워크숍 수료 평가 통제</span>
+                  <span>PART 2. 워크숍 수료 평가 퀴즈 통제</span>
                 </h4>
                 
                 {/* 파트 2 초기화 버튼을 헤더 옆 컴팩트하게 배치 */}
@@ -1797,7 +1788,7 @@ export default function App() {
       {/* FOOTER */}
       <footer className="bg-white border-t border-slate-100 py-6 px-4 mt-12 text-center text-xs text-slate-400 font-medium">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© 2026 구매계약실 상반기 워크숍. All rights reserved.</p>
+          <p>© 2026 구매계약실 상반기 워크숍 운영위원회. All rights reserved.</p>
           <div className="flex space-x-3">
             <span className="text-slate-300">|</span>
             <span className="text-slate-400">배경 스타일: 라이트 모드 (화사한 톤)</span>
