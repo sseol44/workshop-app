@@ -218,7 +218,7 @@ export default function App() {
         setCurrentAdminQuizId(next.current_quiz_id);
         setAdminShowAnswer(next.show_answer);
         // 문제가 바뀐 경우에만 응답 상태 초기화
-        // show_answer만 바뀐 경우(정답 공개/숨기기)엔 초기화하지 않음
+        // show_answer만 바뀐 경우(정답 공개/숨기기)에는 selectedAnswer, hasSubmittedAnswer 유지
         if (prev.current_quiz_id !== next.current_quiz_id) {
           setQuizTimer(10);
           setHasSubmittedAnswer(false);
