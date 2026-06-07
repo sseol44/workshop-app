@@ -1030,9 +1030,9 @@ export default function App() {
               if (!stats) return null;
 
               return (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* 왼쪽 단: 통계 차트 지형도 (2칸 차지) */}
-                  <div className="lg:col-span-2 space-y-6">
+                <div className="space-y-6">
+                  {/* 통계 차트 지형도 */}
+                  <>
                     
                     {/* 부문별 만족도 평점 레이아웃 */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
@@ -1098,20 +1098,20 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* MBTI 및 VOC 집계 리스트 */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                        <h4 className="text-sm font-bold text-slate-700 mb-3">구매계약실 MBTI 분포</h4>
+                    {/* MBTI */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                      <h4 className="text-sm font-bold text-slate-700 mb-3">구매계약실 MBTI 분포</h4>
                         <div className="flex flex-wrap gap-2">
-                          {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
-                            <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
-                              <span>{m}</span>
-                              <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
-                            </span>
-                          ))}
+                         {Object.entries(stats.mbtiCounts).map(([m, cnt]) => (
+                           <span key={m} className="bg-slate-100 text-slate-700 text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1.5">
+                             <span>{m}</span>
+                             <span className="bg-white text-slate-500 rounded-full w-4.5 h-4.5 flex items-center justify-center text-[10px]">{cnt}</span>
+                           </span>
+                         ))}
                         </div>
-                      </div>
+                      </>
 
+                    {/* VOC */}
                       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                         <h4 className="text-sm font-bold text-slate-700 mb-3">종합 VOC 키워드 (최근)</h4>
                         <div className="max-h-[150px] overflow-y-auto space-y-2 pr-1 text-xs">
@@ -1130,8 +1130,7 @@ export default function App() {
 
                   </div>
 
-                  {/* 오른쪽 단: AI 분석 보고서 (1칸 차지) */}
-                  <div className="space-y-6">
+                  {/* AI 분석 보고서 */}
                     <div className="bg-gradient-to-b from-cyan-50/70 to-emerald-50/40 border border-emerald-100 rounded-2xl p-6 shadow-sm min-h-[400px] flex flex-col justify-between">
                       <div>
                         <div className="flex items-center space-x-2 text-emerald-600 font-extrabold text-sm mb-4">
