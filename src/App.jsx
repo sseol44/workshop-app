@@ -1,4 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// === SUPABASE 설정 ===
+// Vercel 환경변수를 사용하거나, 아래에 직접 값을 입력하세요
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://여기에_프로젝트_URL.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '여기에_anon_public_key';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 import { 
   Users, HelpCircle, BarChart3, Settings, LogIn, ChevronRight, ChevronLeft, 
   Play, RotateCcw, AlertTriangle, Plus, Trash2, Edit2, Volume2, VolumeX,
@@ -113,46 +120,14 @@ const playSound = (type) => {
 export default function App() {
   const [currentView, setCurrentView] = useState('main'); 
   
-  // 데이터 로컬 메모리 저장
-  const [surveyResults, setSurveyResults] = useState(() => {
-    try {
-      const saved = localStorage.getItem('surveyResults');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  
-  const [quizList, setQuizList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('quizList');
-      return saved ? JSON.parse(saved) : INITIAL_QUIZZES;
-    } catch {
-      return INITIAL_QUIZZES;
-    }
-  });
+  // 데이터 상태 (Supabase에서 로딩)
+  const [surveyResults, setSurveyResults] = useState([]);
+  const [quizList, setQuizList] = useState([]);
+  const [quizResponses, setQuizResponses] = useState([]);
 
-  const [quizResponses, setQuizResponses] = useState(() => {
-    try {
-      const saved = localStorage.getItem('quizResponses');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // 상태 보존
-  useEffect(() => {
-    localStorage.setItem('surveyResults', JSON.stringify(surveyResults));
-  }, [surveyResults]);
-
-  useEffect(() => {
-    localStorage.setItem('quizList', JSON.stringify(quizList));
-  }, [quizList]);
-
-  useEffect(() => {
-    localStorage.setItem('quizResponses', JSON.stringify(quizResponses));
-  }, [quizResponses]);
+  // Realtime Quiz Status
+  const [currentAdminQuizId, setCurrentAdminQuizId] = useState(1);
+  const [adminShowAnswer, setAdminShowAnswer] = useState(false);
 
   // --- PART 1 STATE ---
   const [userNickname, setUserNickname] = useState('');
@@ -160,14 +135,7 @@ export default function App() {
   const [currentSurveyStep, setCurrentSurveyStep] = useState(0); 
   const [tempAnswers, setTempAnswers] = useState({}); 
   const [vocText, setVocText] = useState('');
-  const [aiReport, setAiReport] = useState(() => {
-    try {
-      const saved = localStorage.getItem('aiReport');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [aiReport, setAiReport] = useState(null);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
 
   // --- PART 2 STATE ---
@@ -177,14 +145,6 @@ export default function App() {
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [quizStartTime, setQuizStartTime] = useState(null);
   
-  // Realtime Quiz Status
-  const [currentAdminQuizId, setCurrentAdminQuizId] = useState(() => {
-    return Number(localStorage.getItem('admin_current_quiz_id') || '1');
-  });
-  const [adminShowAnswer, setAdminShowAnswer] = useState(() => {
-    return localStorage.getItem('admin_show_answer') === 'true';
-  });
-
   // 사운드 상태
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -216,23 +176,54 @@ export default function App() {
     setAlertConfig({ isOpen: true, title, message });
   };
 
-  // 실시간 어드민 퀴즈 전송 동기화 시뮬레이션
+  // === SUPABASE 초기 데이터 로딩 + Realtime 구독 ===
   useEffect(() => {
-    const syncWithStorage = (e) => {
-      if (e.key === 'admin_current_quiz_id') {
-        const nextId = Number(e.newValue || '1');
-        setCurrentAdminQuizId(nextId);
+    const loadAll = async () => {
+      const [
+        { data: surveys },
+        { data: quizzes },
+        { data: responses },
+        { data: status }
+      ] = await Promise.all([
+        supabase.from('survey_results').select('*').order('timestamp', { ascending: true }),
+        supabase.from('quiz_list').select('*').order('id', { ascending: true }),
+        supabase.from('quiz_responses').select('*').order('timestamp', { ascending: true }),
+        supabase.from('quiz_status').select('*').eq('id', 1).single(),
+      ]);
+      if (surveys) setSurveyResults(surveys);
+      if (quizzes) setQuizList(quizzes);
+      if (responses) setQuizResponses(responses);
+      if (status) {
+        setCurrentAdminQuizId(status.current_quiz_id);
+        setAdminShowAnswer(status.show_answer);
+      }
+    };
+    loadAll();
+
+    const channel = supabase
+      .channel('workshop-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'survey_results' }, (payload) => {
+        setSurveyResults(prev => [...prev, payload.new]);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_list' }, async () => {
+        const { data } = await supabase.from('quiz_list').select('*').order('id', { ascending: true });
+        if (data) setQuizList(data);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quiz_responses' }, (payload) => {
+        setQuizResponses(prev => [...prev, payload.new]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_status' }, (payload) => {
+        const s = payload.new;
+        setCurrentAdminQuizId(s.current_quiz_id);
+        setAdminShowAnswer(s.show_answer);
         setQuizTimer(10);
         setHasSubmittedAnswer(false);
         setSelectedAnswer('');
         setQuizStartTime(Date.now());
-      }
-      if (e.key === 'admin_show_answer') {
-        setAdminShowAnswer(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', syncWithStorage);
-    return () => window.removeEventListener('storage', syncWithStorage);
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
 
   // 10초 카운트다운 타이머
@@ -255,9 +246,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled]);
 
-  const updateAdminStatus = (quizId, showAnswer) => {
-    localStorage.setItem('admin_current_quiz_id', String(quizId));
-    localStorage.setItem('admin_show_answer', String(showAnswer));
+  const updateAdminStatus = async (quizId, showAnswer) => {
+    await supabase
+      .from('quiz_status')
+      .update({ current_quiz_id: quizId, show_answer: showAnswer })
+      .eq('id', 1);
     setCurrentAdminQuizId(quizId);
     setAdminShowAnswer(showAnswer);
   };
@@ -280,7 +273,7 @@ export default function App() {
     }, 200);
   };
 
-  const submitSurvey = () => {
+  const submitSurvey = async () => {
     const payload = {
       id: Date.now().toString(),
       nickname: userNickname,
@@ -289,8 +282,11 @@ export default function App() {
       voc: vocText,
       timestamp: new Date().toISOString()
     };
-    const updated = [...surveyResults, payload];
-    setSurveyResults(updated);
+    const { error } = await supabase.from('survey_results').insert([payload]);
+    if (error) {
+      triggerAlert("오류", "설문 저장 중 오류가 발생했습니다: " + error.message);
+      return;
+    }
     triggerAlert("설문 완료", `${userNickname}님의 소중한 조직개선 피드백이 전송되었습니다!`);
     setCurrentView('main');
     setUserNickname('');
@@ -455,7 +451,6 @@ export default function App() {
         content: resultText
       };
       setAiReport(reportData);
-      localStorage.setItem('aiReport', JSON.stringify(reportData));
       triggerAlert("AI 분석 완료", "Gemini 가 조직개선 피드백을 완전하게 종합 분석하였습니다!");
     } catch (error) {
       console.error(error);
@@ -466,37 +461,37 @@ export default function App() {
   };
 
   // --- PART 2 퀴즈 응답 제출 ---
-  const submitQuizAnswer = (answerText, timeLeft) => {
+  const submitQuizAnswer = async (answerText, timeLeft) => {
     if (hasSubmittedAnswer) return;
     setHasSubmittedAnswer(true);
 
     const quiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
+    if (!quiz) return;
+
     const isCorrect = String(answerText).trim().toLowerCase() === String(quiz.answer).trim().toLowerCase();
-    
+    const timeTaken = 10 - timeLeft;
+    const scoreGained = isCorrect ? Math.max(quiz.score - timeTaken, 1) : 0;
+
     if (soundEnabled) {
       playSound(isCorrect ? 'success' : 'fail');
     }
 
-    const payload = {
-      id: Date.now().toString(),
+    await supabase.from('quiz_responses').insert([{
+      quiz_id: quiz.id,
       nickname: quizParticipant,
-      quizId: quiz.id,
-      submittedAnswer: answerText,
-      isCorrect,
-      scoreGained: isCorrect ? quiz.score : 0,
-      timeTaken: 10 - timeLeft,
+      quiz_id_ref: quiz.id,
+      submitted_answer: answerText,
+      is_correct: isCorrect,
+      score_gained: scoreGained,
+      time_taken: timeTaken,
       timestamp: new Date().toISOString()
-    };
-
-    const updated = [...quizResponses, payload];
-    setQuizResponses(updated);
-    localStorage.setItem('quizResponses', JSON.stringify(updated));
+    }]);
   };
 
   // --- 실시간 퀴즈 정답자 추첨 시뮬레이터 ---
   const startDrawing = () => {
     const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-    const correctResponses = quizResponses.filter(r => r.quizId === currentQuiz.id && r.isCorrect);
+    const correctResponses = quizResponses.filter(r => r.quiz_id === currentQuiz.id && r.is_correct);
     
     if (correctResponses.length === 0) {
       triggerAlert("추첨 불가능", "해당 문제의 정답자가 존재하지 않아 추첨할 수 없습니다.");
@@ -537,11 +532,11 @@ export default function App() {
       if (!scores[res.nickname]) {
         scores[res.nickname] = { nickname: res.nickname, totalScore: 0, totalTime: 0, correctCount: 0 };
       }
-      if (res.isCorrect) {
-        scores[res.nickname].totalScore += res.scoreGained;
+      if (res.is_correct) {
+        scores[res.nickname].totalScore += res.score_gained;
         scores[res.nickname].correctCount += 1;
       }
-      scores[res.nickname].totalTime += res.timeTaken;
+      scores[res.nickname].totalTime += res.time_taken;
     });
 
     return Object.values(scores)
@@ -564,21 +559,20 @@ export default function App() {
   };
 
   // --- 데이터 초기화 기능 ---
-  const resetPart1Data = () => {
+  const resetPart1Data = async () => {
     if (window.confirm("진짜로 모든 조직개선 설문조사 결과 및 AI 리포트 데이터를 초기화하시겠습니까?")) {
+      await supabase.from('survey_results').delete().neq('id', '');
       setSurveyResults([]);
       setAiReport(null);
-      localStorage.removeItem('surveyResults');
-      localStorage.removeItem('aiReport');
       triggerAlert("초기화 완료", "파트1 데이터가 성공적으로 삭제되었습니다.");
     }
   };
 
-  const resetPart2Data = () => {
+  const resetPart2Data = async () => {
     if (window.confirm("진짜로 모든 퀴즈 참가자 제출 데이터 및 랭킹 정보를 초기화하시겠습니까?")) {
+      await supabase.from('quiz_responses').delete().neq('id', 0);
       setQuizResponses([]);
-      localStorage.removeItem('quizResponses');
-      updateAdminStatus(1, false);
+      await updateAdminStatus(1, false);
       triggerAlert("초기화 완료", "파트2 데이터가 완벽하게 초기화되었습니다.");
     }
   };
@@ -660,42 +654,32 @@ export default function App() {
     setIsQuizModalOpen(true);
   };
 
-  const handleSaveQuiz = () => {
+  const handleSaveQuiz = async () => {
     if (!quizFormQuestion || !quizFormAnswer) {
       triggerAlert("입력 확인", "문제 내용과 정답은 반드시 입력되어야 합니다.");
       return;
     }
 
     const cleanOptions = quizFormType === 'ox' ? ["O", "X"] : quizFormOptions.filter(opt => opt.trim() !== '');
+    const quizData = {
+      type: quizFormType,
+      question: quizFormQuestion,
+      options: cleanOptions,
+      answer: quizFormAnswer,
+      score: Number(quizFormScore)
+    };
 
     if (quizEditTarget) {
-      const updated = quizList.map(q => q.id === quizEditTarget.id ? {
-        ...q,
-        type: quizFormType,
-        question: quizFormQuestion,
-        options: cleanOptions,
-        answer: quizFormAnswer,
-        score: Number(quizFormScore)
-      } : q);
-      setQuizList(updated);
+      await supabase.from('quiz_list').update(quizData).eq('id', quizEditTarget.id);
     } else {
-      const newQuiz = {
-        id: quizList.length > 0 ? Math.max(...quizList.map(q => q.id)) + 1 : 1,
-        type: quizFormType,
-        question: quizFormQuestion,
-        options: cleanOptions,
-        answer: quizFormAnswer,
-        score: Number(quizFormScore)
-      };
-      setQuizList([...quizList, newQuiz]);
+      await supabase.from('quiz_list').insert([quizData]);
     }
     setIsQuizModalOpen(false);
   };
 
-  const handleDeleteQuiz = (id) => {
+  const handleDeleteQuiz = async (id) => {
     if (window.confirm("이 문제를 삭제하시겠습니까?")) {
-      const updated = quizList.filter(q => q.id !== id);
-      setQuizList(updated);
+      await supabase.from('quiz_list').delete().eq('id', id);
     }
   };
 
@@ -1276,8 +1260,6 @@ export default function App() {
                     triggerAlert("이름 필요", "실명 기반의 닉네임을 적어주세요!");
                     return;
                   }
-                  const liveId = Number(localStorage.getItem('admin_current_quiz_id') || '1');
-                  setCurrentAdminQuizId(liveId);
                   setHasSubmittedAnswer(false);
                   setSelectedAnswer('');
                   setQuizTimer(10);
@@ -1535,8 +1517,8 @@ export default function App() {
                   <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2">문제별 결과 분석 지표</h4>
                   <div className="space-y-5 max-h-[450px] overflow-y-auto pr-2">
                     {quizList.map(q => {
-                      const responsesForQ = quizResponses.filter(r => r.quizId === q.id);
-                      const correctCount = responsesForQ.filter(r => r.isCorrect).length;
+                      const responsesForQ = quizResponses.filter(r => r.quiz_id === q.id);
+                      const correctCount = responsesForQ.filter(r => r.is_correct).length;
                       const totalCount = responsesForQ.length;
                       const correctRate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
@@ -1737,8 +1719,8 @@ export default function App() {
                     const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
                     if (!activeQuiz) return <p className="text-slate-400 text-xs">등록된 퀴즈가 없습니다.</p>;
 
-                    const totalResponses = quizResponses.filter(r => r.quizId === activeQuiz.id).length;
-                    const correctResponses = quizResponses.filter(r => r.quizId === activeQuiz.id && r.isCorrect).length;
+                    const totalResponses = quizResponses.filter(r => r.quiz_id === activeQuiz.id).length;
+                    const correctResponses = quizResponses.filter(r => r.quiz_id === activeQuiz.id && r.is_correct).length;
 
                     return (
                       <div className="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
@@ -1930,8 +1912,8 @@ export default function App() {
       {/* REAL-TIME RAFFLE POPUP MODAL (ADMIN ONLY) */}
       {isRaffleModalOpen && (() => {
         const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-        const responsesForQ = quizResponses.filter(r => r.quizId === currentQuiz?.id);
-        const correctResponses = responsesForQ.filter(r => r.isCorrect);
+        const responsesForQ = quizResponses.filter(r => r.quiz_id === currentQuiz?.id);
+        const correctResponses = responsesForQ.filter(r => r.is_correct);
         const correctCount = correctResponses.length;
         const incorrectCount = responsesForQ.length - correctCount;
         const totalCount = responsesForQ.length;
@@ -2065,7 +2047,7 @@ export default function App() {
                     <Award className="w-12 h-12 text-yellow-300 mb-1" />
                     <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">당첨을 축하드립니다!</span>
                     <h5 className="font-extrabold text-xl mt-1">{drawWinner.nickname}</h5>
-                    <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.timeTaken}초</p>
+                    <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.time_taken}초</p>
                     <button 
                       onClick={() => setDrawWinner(null)}
                       className="mt-3 bg-white text-slate-800 text-xs font-bold py-1 px-4 rounded-md shadow hover:bg-slate-50 transition-colors"
