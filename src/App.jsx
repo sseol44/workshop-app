@@ -137,6 +137,8 @@ export default function App() {
   const [vocText, setVocText] = useState('');
   const [aiReport, setAiReport] = useState(null);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [autoAnalysisEnabled, setAutoAnalysisEnabled] = useState(true);   // 자동 분석 ON/OFF
+  const [autoAnalysisInterval, setAutoAnalysisInterval] = useState(3);    // N명 제출마다 1회 자동 분석
 
   // --- PART 2 STATE ---
   const [quizParticipant, setQuizParticipant] = useState('');
@@ -316,6 +318,21 @@ export default function App() {
     setTempAnswers({});
     setVocText('');
     setCurrentSurveyStep(0);
+
+    // --- 자동 AI 분석 트리거 ---
+    // 설문 제출 후 surveyResults는 Realtime으로 업데이트되므로
+    // 현재 제출 포함 인원을 직접 계산
+    if (autoAnalysisEnabled && !isAiAnalyzing) {
+      const { data: latest } = await supabase
+        .from('survey_results')
+        .select('id', { count: 'exact' });
+      const currentCount = latest ? latest.length : (surveyResults.length + 1);
+      // N명 제출마다 자동 분석 실행 (예: 3명이면 3, 6, 9, ...번째 제출 시)
+      if (autoAnalysisInterval > 0 && currentCount % autoAnalysisInterval === 0) {
+        // 약간의 딜레이 후 실행 (Realtime 반영 대기)
+        setTimeout(() => requestAiAnalysis(), 1500);
+      }
+    }
   };
 
   // --- 통계 및 지형도 분석 연산 ---
@@ -1722,7 +1739,10 @@ export default function App() {
                     <span>조직문화 AI 분석 리포트 생성 및 제어</span>
                   </h5>
                   <p className="text-xs text-emerald-600">수집된 설문 데이터를 바탕으로 AI(Gemini)에 분석 보고서 생성을 요청합니다.</p>
-                  <div className="pt-2">
+
+                  {/* 수동 분석 버튼 */}
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 mb-1.5">🖐 수동 분석</p>
                     <button
                       onClick={requestAiAnalysis}
                       disabled={surveyResults.length === 0 || isAiAnalyzing}
@@ -1731,6 +1751,46 @@ export default function App() {
                       {isAiAnalyzing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                       <span>{isAiAnalyzing ? "AI 분석가 가동 중..." : "AI 결과 종합 분석 요청"}</span>
                     </button>
+                  </div>
+
+                  {/* 자동 분석 설정 */}
+                  <div className="border-t border-emerald-200 pt-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-500">🤖 자동 분석</p>
+                      <button
+                        onClick={() => setAutoAnalysisEnabled(prev => !prev)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${autoAnalysisEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${autoAnalysisEnabled ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
+                    {autoAnalysisEnabled && (
+                      <div className="bg-white border border-emerald-100 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] text-slate-500 font-semibold">N명 제출마다 자동 분석 실행</p>
+                        <div className="flex items-center space-x-2">
+                          {[1, 3, 5, 10].map(n => (
+                            <button
+                              key={n}
+                              onClick={() => setAutoAnalysisInterval(n)}
+                              className={`flex-1 text-[11px] font-bold py-1 rounded-md transition-all ${autoAnalysisInterval === n ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                            >
+                              {n}명
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          현재: {autoAnalysisInterval}명 제출마다 자동 분석<br/>
+                          예상 월 호출: 약 {Math.ceil(500 / autoAnalysisInterval)}회
+                          {Math.ceil(500 / autoAnalysisInterval) > 250
+                            ? <span className="text-rose-500 font-bold"> ⚠️ 일일 한도 주의</span>
+                            : <span className="text-emerald-600 font-bold"> ✅ 무료 한도 내</span>
+                          }
+                        </p>
+                      </div>
+                    )}
+                    {!autoAnalysisEnabled && (
+                      <p className="text-[10px] text-slate-400 bg-white rounded-lg p-2 border border-slate-100">자동 분석 꺼짐 — 수동 버튼으로만 분석합니다.</p>
+                    )}
                   </div>
                 </div>
 
