@@ -157,6 +157,7 @@ export default function App() {
   const [rouletteDegree, setRouletteDegree] = useState(0);
   const [isRaffleModalOpen, setIsRaffleModalOpen] = useState(false);
   const [isRaffleAssigned, setIsRaffleAssigned] = useState(false);
+  const [isLiveQuizModalOpen, setIsLiveQuizModalOpen] = useState(false);
 
   // 관리자 모드 비밀번호 입력
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
@@ -1834,34 +1835,171 @@ export default function App() {
             </div>
 
             {/* ========================================== */}
-            {/* PART 2. 워크숍 수료 평가 퀴즈 통제 섹션      */}
+
+            {/* PART 2. 워크숍 수료 평가 퀴즈 통제 섹션 — 3열 레이아웃 */}
             {/* ========================================== */}
             <div className="space-y-4 pt-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-2 gap-2">
+              <div className="border-b border-slate-200 pb-2">
                 <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2">
                   <HelpCircle className="w-5 h-5 text-cyan-500" />
                   <span>PART 2. 워크숍 수료 평가 퀴즈 통제</span>
                 </h4>
-                
-                {/* 파트 2 초기화 버튼을 헤더 옆 컴팩트하게 배치 */}
-                <button
-                  onClick={resetPart2Data}
-                  className="bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold py-1.5 px-3 rounded-lg transition-all flex items-center space-x-1.5 self-start sm:self-auto"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>파트 2 퀴즈 및 랭킹 데이터 초기화</span>
-                </button>
               </div>
 
-              {/* 어드민 세션 분할 배치 */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* 세션 A: 실시간 라이브 퀴즈 송출 상황판 (2칸 차지) */}
-              <div className="lg:col-span-2 space-y-6">
-                
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                {/* 좌측: 퀴즈 문제 은행 편집 보드 */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b pb-3">
-                    <h4 className="font-bold text-slate-800 text-lg flex items-center space-x-1.5">
+                    <h5 className="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
+                      <Edit2 className="w-4 h-4 text-cyan-500" />
+                      <span>퀴즈 문제 은행 편집 보드</span>
+                    </h5>
+                    <button
+                      onClick={() => openQuizModal(null)}
+                      className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>새 퀴즈 추가</span>
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                    {quizList.length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-6">등록된 퀴즈가 없습니다.</p>
+                    )}
+                    {quizList.map(q => (
+                      <div key={q.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-1.5 flex-wrap gap-1">
+                            <span className="bg-slate-200 text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Q{q.id}</span>
+                            <span className="bg-cyan-100 text-cyan-800 text-[9px] font-bold px-1.5 py-0.5 rounded">
+                              {q.type === 'choice' ? '객관식' : q.type === 'ox' ? 'OX' : '주관식'}
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-800 mt-1 truncate">{q.question.slice(0, 24)}...</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">정답: {q.answer} / {q.score}점</p>
+                        </div>
+                        <div className="flex space-x-1 ml-2">
+                          <button onClick={() => openQuizModal(q)} className="p-1.5 hover:bg-slate-200 text-slate-500 rounded">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDeleteQuiz(q.id)} className="p-1.5 hover:bg-rose-100 text-rose-500 rounded">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 가운데: 실시간 라이브 퀴즈 버튼 */}
+                <div className="bg-gradient-to-b from-cyan-50 to-slate-50 border border-cyan-200 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center space-y-5">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                      <Play className="w-8 h-8 text-white" />
+                    </div>
+                    <h5 className="font-extrabold text-slate-800 text-base">실시간 라이브 퀴즈</h5>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                      퀴즈 송출 패널과 즉석 추첨기를<br/>팝업 화면에서 통합 제어합니다.
+                    </p>
+                  </div>
+
+                  {/* 실시간 현황 미리보기 */}
+                  {(() => {
+                    const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
+                    const totalResp = activeQuiz ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id)).length : 0;
+                    return activeQuiz ? (
+                      <div className="w-full bg-white border border-cyan-100 rounded-xl px-4 py-3 text-center space-y-1">
+                        <p className="text-[10px] text-slate-400 font-bold">현재 송출 중</p>
+                        <p className="text-xs font-extrabold text-slate-700 truncate">Q{activeQuiz.id}. {activeQuiz.question.slice(0, 20)}...</p>
+                        <div className="flex items-center justify-center space-x-1.5 pt-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                          <span className="text-xs font-bold text-cyan-600">{totalResp}명 제출 완료</span>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
+
+                  <button
+                    onClick={() => setIsLiveQuizModalOpen(true)}
+                    className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-sm"
+                  >
+                    <Play className="w-4 h-4" />
+                    <span>실시간 라이브 퀴즈 열기</span>
+                  </button>
+                </div>
+
+                {/* 우측: 데이터 초기화 */}
+                <div className="bg-rose-50/60 border border-rose-100 rounded-2xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <h5 className="font-bold text-rose-800 flex items-center space-x-1.5 text-sm border-b border-rose-100 pb-3">
+                      <Trash2 className="w-4 h-4 text-rose-600" />
+                      <span>파트 2 데이터 초기화</span>
+                    </h5>
+                    <div className="mt-4 space-y-3">
+                      <div className="bg-white border border-rose-100 rounded-xl p-3 text-xs text-slate-500 space-y-1">
+                        <p className="font-bold text-slate-700">⚠️ 초기화 시 삭제 항목</p>
+                        <p>• 전체 퀴즈 참여자 응답 데이터</p>
+                        <p>• 점수 및 랭킹 정보</p>
+                        <p>• 추첨 결과 기록</p>
+                        <p className="text-rose-500 font-bold pt-1">* 퀴즈 문제 목록은 유지됩니다.</p>
+                      </div>
+                      <div className="bg-white border border-slate-100 rounded-xl p-3 text-xs space-y-1">
+                        <p className="text-slate-500 font-bold">📊 현재 데이터 현황</p>
+                        <p className="text-slate-700">총 응답 수: <span className="font-black text-cyan-600">{quizResponses.length}건</span></p>
+                        <p className="text-slate-700">참여자 수: <span className="font-black text-cyan-600">{[...new Set(quizResponses.map(r => r.nickname))].filter(Boolean).length}명</span></p>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={resetPart2Data}
+                    className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center space-x-1.5 text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>파트 2 퀴즈 & 랭킹 초기화</span>
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================ */}
+      {/* 실시간 라이브 퀴즈 팝업 모달 (최대 크기)          */}
+      {/* ================================================ */}
+      {isLiveQuizModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-3">
+          <div className="bg-slate-50 rounded-2xl shadow-2xl w-full h-full max-w-[98vw] max-h-[96vh] flex flex-col overflow-hidden">
+
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
+                  <Play className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-base">실시간 라이브 퀴즈 통제 센터</h3>
+                  <p className="text-[10px] text-slate-400">송출 패널 · 추첨기 통합 운영</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsLiveQuizModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 모달 바디: 2열 분할 */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 h-full">
+
+                {/* 좌측: 실시간 라이브 퀴즈 송출 패널 */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <h4 className="font-bold text-slate-800 text-base flex items-center space-x-1.5">
                       <Play className="w-5 h-5 text-cyan-500" />
                       <span>실시간 라이브 퀴즈 송출 패널</span>
                     </h4>
@@ -1881,7 +2019,6 @@ export default function App() {
                           }
                         }}
                         className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-2.5 py-1 rounded flex items-center space-x-1 transition-all"
-                        title="응답 데이터 수동 새로고침"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>새로고침</span>
@@ -2010,69 +2147,46 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-
                 </div>
 
-                {/* 세션 B: 퀴즈 문제 은행 리스트 관리 */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <h4 className="font-bold text-slate-800 text-base">퀴즈 문제 은행 편집 보드</h4>
-                    <button 
-                      onClick={() => openQuizModal(null)}
-                      className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>새 퀴즈 추가</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                    {quizList.map(q => (
-                      <div key={q.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
-                        <div>
-                          <div className="flex items-center space-x-1.5 flex-wrap gap-1">
-                            <span className="bg-slate-200 text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Q{q.id}</span>
-                            <span className="bg-cyan-100 text-cyan-800 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                              {q.type === 'choice' ? '객관식' : q.type === 'ox' ? 'OX' : '주관식'}
-                            </span>
-                            <span className="text-xs font-bold text-slate-800">{q.question.slice(0, 30)}...</span>
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-1">정답: {q.answer} / 배점: {q.score}점</p>
-                        </div>
-
-                        <div className="flex space-x-1">
-                          <button 
-                            onClick={() => openQuizModal(q)}
-                            className="p-1.5 hover:bg-slate-200 text-slate-500 rounded"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteQuiz(q.id)}
-                            className="p-1.5 hover:bg-rose-100 text-rose-500 rounded"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-
-              {/* 세션 C: 즉석 추첨기 게이트웨이 */}
-              <div className="space-y-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+                {/* 우측: 정답자 실시간 즉석 추첨기 */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
                   <div className="border-b pb-3">
-                    <h4 className="font-bold text-slate-800 text-base">정답자 실시간 즉석 추첨기</h4>
+                    <h4 className="font-bold text-slate-800 text-base flex items-center space-x-1.5">
+                      <Award className="w-5 h-5 text-amber-500" />
+                      <span>정답자 실시간 즉석 추첨기</span>
+                    </h4>
                     <p className="text-xs text-slate-400 mt-1">실시간 퀴즈 정답자들을 대상으로 한 즉석 기프티콘 추첨 모듈입니다.</p>
                   </div>
-                  
-                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs text-slate-500 space-y-2">
+
+                  {/* 현재 문제 정답자 현황 */}
+                  {(() => {
+                    const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
+                    const correctList = activeQuiz
+                      ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id) && r.is_correct)
+                      : [];
+                    return (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 space-y-2">
+                        <p className="text-xs font-bold text-emerald-700">현재 문제 정답자 현황</p>
+                        <p className="text-2xl font-black text-emerald-600">{correctList.length}명</p>
+                        <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                          {correctList.map((r, i) => (
+                            <span key={i} className="bg-white border border-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              {r.nickname}
+                            </span>
+                          ))}
+                          {correctList.length === 0 && (
+                            <p className="text-xs text-slate-400">아직 정답자가 없습니다.</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs text-slate-500 space-y-1.5">
                     <p className="font-bold text-slate-700">📌 추첨 안내</p>
-                    <p>- 현재 송출된 퀴즈의 정답자 명단을 추출하여 추첨 팝업 창을 엽니다.</p>
-                    <p>- 팝업 창 내에서 룰렛/사다리 배정 및 추첨을 제어할 수 있습니다.</p>
+                    <p>• 현재 송출된 퀴즈의 정답자 명단을 추출하여 추첨 팝업 창을 엽니다.</p>
+                    <p>• 팝업 창 내에서 룰렛/사다리 배정 및 추첨을 제어할 수 있습니다.</p>
                   </div>
 
                   <button
@@ -2081,16 +2195,15 @@ export default function App() {
                       setIsRaffleAssigned(false);
                       setDrawWinner(null);
                     }}
-                    className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow transition-all flex items-center justify-center space-x-1.5"
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl shadow transition-all flex items-center justify-center space-x-1.5"
                   >
                     <Award className="w-5 h-5" />
                     <span>추첨기 팝업 호출하기</span>
                   </button>
                 </div>
+
               </div>
-
             </div>
-
           </div>
         </div>
       )}
