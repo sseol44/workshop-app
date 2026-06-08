@@ -192,7 +192,16 @@ export default function App() {
       ]);
       if (surveys) setSurveyResults(surveys);
       if (quizzes) setQuizList(quizzes);
-      if (responses) setQuizResponses(responses);
+      if (responses) {
+        const normalized = responses.map(row => ({
+          ...row,
+          quiz_id: Number(row.quiz_id),
+          is_correct: row.is_correct === true || row.is_correct === 'true',
+          score_gained: Number(row.score_gained || 0),
+          time_taken: Number(row.time_taken || 0),
+        }));
+        setQuizResponses(normalized);
+      }
       if (status) {
         setCurrentAdminQuizId(status.current_quiz_id);
         setAdminShowAnswer(status.show_answer);
@@ -210,7 +219,16 @@ export default function App() {
         if (data) setQuizList(data);
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quiz_responses' }, (payload) => {
-        setQuizResponses(prev => [...prev, payload.new]);
+        const row = payload.new;
+        // Supabase Realtime에서 타입이 문자열로 올 수 있어 명시적으로 변환
+        const normalized = {
+          ...row,
+          quiz_id: Number(row.quiz_id),
+          is_correct: row.is_correct === true || row.is_correct === 'true',
+          score_gained: Number(row.score_gained || 0),
+          time_taken: Number(row.time_taken || 0),
+        };
+        setQuizResponses(prev => [...prev, normalized]);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_status' }, (payload) => {
         const prev = payload.old;
@@ -481,22 +499,25 @@ export default function App() {
       playSound(isCorrect ? 'success' : 'fail');
     }
 
-    await supabase.from('quiz_responses').insert([{
-      quiz_id: quiz.id,
+    const { error } = await supabase.from('quiz_responses').insert([{
+      quiz_id: Number(quiz.id),
       nickname: quizParticipant,
-      quiz_id_ref: quiz.id,
-      submitted_answer: answerText,
+      submitted_answer: String(answerText),
       is_correct: isCorrect,
       score_gained: scoreGained,
       time_taken: timeTaken,
       timestamp: new Date().toISOString()
     }]);
+
+    if (error) {
+      console.error('quiz_responses INSERT 오류:', error);
+    }
   };
 
   // --- 실시간 퀴즈 정답자 추첨 시뮬레이터 ---
   const startDrawing = () => {
     const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-    const correctResponses = quizResponses.filter(r => r.quiz_id === currentQuiz.id && r.is_correct);
+    const correctResponses = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz.id) && r.is_correct);
     
     if (correctResponses.length === 0) {
       triggerAlert("추첨 불가능", "해당 문제의 정답자가 존재하지 않아 추첨할 수 없습니다.");
@@ -1572,7 +1593,7 @@ export default function App() {
                   <h4 className="text-base font-bold text-slate-700 mb-4 border-b pb-2">문제별 결과 분석 지표</h4>
                   <div className="space-y-5 max-h-[450px] overflow-y-auto pr-2">
                     {quizList.map(q => {
-                      const responsesForQ = quizResponses.filter(r => r.quiz_id === q.id);
+                      const responsesForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(q.id));
                       const correctCount = responsesForQ.filter(r => r.is_correct).length;
                       const totalCount = responsesForQ.length;
                       const correctRate = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
@@ -1774,7 +1795,7 @@ export default function App() {
                     const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
                     if (!activeQuiz) return <p className="text-slate-400 text-xs">등록된 퀴즈가 없습니다.</p>;
 
-                    const responsesForQ = quizResponses.filter(r => r.quiz_id === activeQuiz.id);
+                    const responsesForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz.id));
                     const totalResponses = responsesForQ.length;
                     const correctCount = responsesForQ.filter(r => r.is_correct).length;
                     const incorrectCount = totalResponses - correctCount;
@@ -2007,7 +2028,7 @@ export default function App() {
       {/* REAL-TIME RAFFLE POPUP MODAL (ADMIN ONLY) */}
       {isRaffleModalOpen && (() => {
         const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-        const responsesForQ = quizResponses.filter(r => r.quiz_id === currentQuiz?.id);
+        const responsesForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz?.id));
         const correctResponses = responsesForQ.filter(r => r.is_correct);
         const correctCount = correctResponses.length;
         const incorrectCount = responsesForQ.length - correctCount;
