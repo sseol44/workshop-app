@@ -2317,10 +2317,31 @@ export default function App() {
               {/* 추첨판 시각화 영역 */}
               <div className="bg-slate-50 rounded-xl p-6 flex flex-col items-center justify-center min-h-[350px] border border-slate-100 relative overflow-hidden">
                 {!isRaffleAssigned ? (
-                  <div className="text-center py-6 text-slate-400 space-y-2">
-                    <Users className="w-12 h-12 mx-auto text-slate-300 animate-bounce" />
-                    <p className="font-bold text-base text-slate-500">추첨 판이 준비되지 않았습니다.</p>
-                    <p className="text-xs">하단 '즉석 기프티콘 추첨 시작' 버튼을 눌러 정답자를 먼저 배정해주세요.</p>
+                  <div className="w-full space-y-4">
+                    <div className="text-center space-y-1">
+                      <Users className="w-10 h-10 mx-auto text-slate-300" />
+                      <p className="font-bold text-base text-slate-500">추첨 대상자 명단</p>
+                      <p className="text-xs text-slate-400">하단 '즉석 기프티콘 추첨 시작' 버튼을 눌러 추첨판을 배정해주세요.</p>
+                    </div>
+                    {correctResponses.length === 0 ? (
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
+                        <p className="text-xs text-slate-400 font-semibold">아직 정답자가 없습니다.</p>
+                      </div>
+                    ) : (
+                      <div className="bg-white border border-emerald-100 rounded-xl p-4 space-y-2">
+                        <p className="text-[11px] font-bold text-emerald-600 mb-2">
+                          ✅ 정답자 {correctResponses.length}명
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {correctResponses.map((r, idx) => (
+                            <div key={idx} className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                              <span className="w-4 h-4 bg-emerald-500 text-white rounded-full text-[9px] font-black flex items-center justify-center">{idx + 1}</span>
+                              <span className="text-xs font-bold text-emerald-700">{r.nickname}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : drawMethod === 'roulette' ? (
                   <div className="flex flex-col items-center">
