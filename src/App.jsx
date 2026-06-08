@@ -1963,11 +1963,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
       )}
-
-      {/* ================================================ */}
-      {/* 실시간 라이브 퀴즈 팝업 모달 (최대 크기)          */}
       {/* ================================================ */}
       {isLiveQuizModalOpen && (
         <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-3">
