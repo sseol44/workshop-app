@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-
-// === SUPABASE 설정 ===
-// Vercel 환경변수를 사용하거나, 아래에 직접 값을 입력하세요
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 import { 
   Users, HelpCircle, BarChart3, Settings, LogIn, ChevronRight, ChevronLeft, 
   Play, RotateCcw, AlertTriangle, Plus, Trash2, Edit2, Volume2, VolumeX,
   Award, CheckCircle, X, RefreshCw, Send, Sparkles, Smile, Star, Coffee,
   Download, FileSpreadsheet
 } from 'lucide-react';
+
+// === SUPABASE 설정 ===
+// Vercel 환경변수를 사용하거나, 아래에 직접 값을 입력하세요
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // === CONSTANTS & QUESTION BANK ===
 const ADMIN_PASSWORD = "Rnao!234";
@@ -499,18 +499,36 @@ export default function App() {
       playSound(isCorrect ? 'success' : 'fail');
     }
 
-    const { error } = await supabase.from('quiz_responses').insert([{
+    const { data, error } = await supabase.from('quiz_responses').insert([{
       quiz_id: Number(quiz.id),
       nickname: quizParticipant,
       submitted_answer: String(answerText),
       is_correct: isCorrect,
       score_gained: scoreGained,
       time_taken: timeTaken,
-      timestamp: new Date().toISOString()
-    }]);
+    }]).select();
 
     if (error) {
       console.error('quiz_responses INSERT 오류:', error);
+      triggerAlert('제출 오류', `답안 저장 실패: ${error.message}`);
+      setHasSubmittedAnswer(false);
+      return;
+    }
+
+    // Realtime이 느릴 경우 직접 state에도 반영
+    if (data && data.length > 0) {
+      const row = data[0];
+      setQuizResponses(prev => {
+        const already = prev.find(r => r.id === row.id);
+        if (already) return prev;
+        return [...prev, {
+          ...row,
+          quiz_id: Number(row.quiz_id),
+          is_correct: row.is_correct === true || row.is_correct === 'true',
+          score_gained: Number(row.score_gained || 0),
+          time_taken: Number(row.time_taken || 0),
+        }];
+      });
     }
   };
 
@@ -1787,7 +1805,29 @@ export default function App() {
                       <Play className="w-5 h-5 text-cyan-500" />
                       <span>실시간 라이브 퀴즈 송출 패널</span>
                     </h4>
-                    <span className="bg-cyan-50 text-cyan-600 text-xs font-black px-2.5 py-1 rounded">LIVE CONTROL</span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={async () => {
+                          const { data } = await supabase.from('quiz_responses').select('*').order('timestamp', { ascending: true });
+                          if (data) {
+                            const normalized = data.map(row => ({
+                              ...row,
+                              quiz_id: Number(row.quiz_id),
+                              is_correct: row.is_correct === true || row.is_correct === 'true',
+                              score_gained: Number(row.score_gained || 0),
+                              time_taken: Number(row.time_taken || 0),
+                            }));
+                            setQuizResponses(normalized);
+                          }
+                        }}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-2.5 py-1 rounded flex items-center space-x-1 transition-all"
+                        title="응답 데이터 수동 새로고침"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>새로고침</span>
+                      </button>
+                      <span className="bg-cyan-50 text-cyan-600 text-xs font-black px-2.5 py-1 rounded">LIVE CONTROL</span>
+                    </div>
                   </div>
 
                   {/* 현재 활성 퀴즈 정보 */}
