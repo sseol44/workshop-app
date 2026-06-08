@@ -1670,7 +1670,8 @@ export default function App() {
           <div className="max-w-sm mx-auto w-full bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
             <div className="text-center mb-6">
               <LogIn className="w-10 h-10 text-slate-700 mx-auto mb-2" />
-              <h3 className="text-xl font-bold text-slate-800">워크숍 관리자 인증</h3>
+              <h3 className="text-xl font-bold text-slate-800">워크숍 통합 관리자 인증</h3>
+              <p className="text-xs text-slate-400 mt-1">시스템 세팅 조정을 위한 액세스 잠금</p>
             </div>
 
             <div className="space-y-4">
@@ -1723,12 +1724,12 @@ export default function App() {
             </div>
 
             {/* ========================================== */}
-            {/* PART 1. 조직개선 설문조사 관리 섹션         */}
+            {/* PART 1. 조직개선 설문조사 통제 섹션          */}
             {/* ========================================== */}
             <div className="space-y-4">
               <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2 border-b border-slate-200 pb-2">
                 <Users className="w-5 h-5 text-emerald-500" />
-                <span>PART 1. 조직개선 설문조사 관리/span>
+                <span>PART 1. 조직개선 설문조사 통제</span>
               </h4>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1736,7 +1737,7 @@ export default function App() {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <h5 className="font-bold text-emerald-800 flex items-center space-x-1.5 text-sm">
                     <Sparkles className="w-4.5 h-4.5 text-emerald-600" />
-                    <span>조직문화 AI 분석 리포트 생성</span>
+                    <span>조직문화 AI 분석 리포트 생성 및 제어</span>
                   </h5>
                   <p className="text-xs text-emerald-600">수집된 설문 데이터를 바탕으로 AI(Gemini)에 분석 보고서 생성을 요청합니다.</p>
 
@@ -1835,19 +1836,19 @@ export default function App() {
 
             {/* ========================================== */}
 
-            {/* PART 2. 워크숍 수료평가 관리 섹션 — 3열 레이아웃 */}
+            {/* PART 2. 워크숍 수료 평가 퀴즈 통제 섹션 — 3열 레이아웃 */}
             {/* ========================================== */}
             <div className="space-y-4 pt-4">
               <div className="border-b border-slate-200 pb-2">
                 <h4 className="text-lg font-extrabold text-slate-800 flex items-center space-x-2">
                   <HelpCircle className="w-5 h-5 text-cyan-500" />
-                  <span>PART 2. 워크숍 수료평가 관리</span>
+                  <span>PART 2. 워크숍 수료 평가 퀴즈 통제</span>
                 </h4>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                {/* 좌측: 퀴즈 문제 편집 보드 */}
+                {/* 좌측: 퀴즈 문제 은행 편집 보드 */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b pb-3">
                     <h5 className="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
@@ -1891,13 +1892,16 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 가운데: 실시간 수료평가 버튼 */}
+                {/* 가운데: 실시간 라이브 퀴즈 버튼 */}
                 <div className="bg-gradient-to-b from-cyan-50 to-slate-50 border border-cyan-200 rounded-2xl p-6 shadow-sm flex flex-col items-center justify-center space-y-5">
                   <div className="text-center">
                     <div className="w-16 h-16 bg-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
                       <Play className="w-8 h-8 text-white" />
                     </div>
-                    <h5 className="font-extrabold text-slate-800 text-base">실시간 수료평가</h5>
+                    <h5 className="font-extrabold text-slate-800 text-base">실시간 라이브 퀴즈</h5>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                      퀴즈 송출 패널과 즉석 추첨기를<br/>팝업 화면에서 통합 제어합니다.
+                    </p>
                   </div>
 
                   {/* 실시간 현황 미리보기 */}
@@ -1921,7 +1925,7 @@ export default function App() {
                     className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 text-sm"
                   >
                     <Play className="w-4 h-4" />
-                    <span>실시간 수료평가 열기</span>
+                    <span>실시간 라이브 퀴즈 열기</span>
                   </button>
                 </div>
 
@@ -1988,12 +1992,12 @@ export default function App() {
             <div className="flex-1 overflow-y-auto p-5">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 h-full">
 
-                {/* 좌측: 실시간 수료평가 관리 패널 */}
+                {/* 좌측: 실시간 라이브 퀴즈 송출 패널 */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
                   <div className="flex items-center justify-between border-b pb-3">
                     <h4 className="font-bold text-slate-800 text-base flex items-center space-x-1.5">
                       <Play className="w-5 h-5 text-cyan-500" />
-                      <span>실시간 수료평가 관리 패널</span>
+                      <span>실시간 라이브 퀴즈 송출 패널</span>
                     </h4>
                     <div className="flex items-center space-x-2">
                       <button
@@ -2190,7 +2194,7 @@ export default function App() {
                     className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-4 rounded-xl shadow transition-all flex items-center justify-center space-x-1.5"
                   >
                     <Award className="w-5 h-5" />
-                    <span>정답자 추첨하기</span>
+                    <span>추첨기 팝업 호출하기</span>
                   </button>
                 </div>
 
