@@ -405,6 +405,7 @@ export default function App() {
   // Realtime Quiz Status
   const [currentAdminQuizId, setCurrentAdminQuizId] = useState(1);
   const [adminShowAnswer, setAdminShowAnswer] = useState(false);
+  const [quizSessionActive, setQuizSessionActive] = useState(false); // 수료평가 세션 활성 여부
 
   // --- PART 1 STATE ---
   const [userNickname, setUserNickname] = useState('');
@@ -490,6 +491,7 @@ export default function App() {
       if (status) {
         setCurrentAdminQuizId(status.current_quiz_id);
         setAdminShowAnswer(status.show_answer);
+        setQuizSessionActive(status.session_active === true);
       }
     };
     loadAll();
@@ -520,6 +522,7 @@ export default function App() {
         const next = payload.new;
         setCurrentAdminQuizId(next.current_quiz_id);
         setAdminShowAnswer(next.show_answer);
+        setQuizSessionActive(next.session_active === true);
         // 문제가 바뀐 경우에만 응답 상태 초기화
         // show_answer만 변경(정답 공개/숨기기)된 경우엔 selectedAnswer, hasSubmittedAnswer 유지
         if (prev.current_quiz_id !== next.current_quiz_id) {
@@ -528,16 +531,22 @@ export default function App() {
           setSelectedAnswer('');
           setQuizStartTime(Date.now());
         }
+        // 세션이 비활성화되면 참여자 타이머/응답 상태 초기화
+        if (prev.session_active === true && next.session_active === false) {
+          setQuizTimer(10);
+          setHasSubmittedAnswer(false);
+          setSelectedAnswer('');
+        }
       })
       .subscribe();
 
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // 10초 카운트다운 타이머
+  // 10초 카운트다운 타이머 (세션이 활성화되어 있고 문제가 공개된 경우에만 작동)
   useEffect(() => {
     let interval;
-    if (currentView === 'part2-quiz' && quizTimer > 0 && !hasSubmittedAnswer) {
+    if (currentView === 'part2-quiz' && quizSessionActive && quizTimer > 0 && !hasSubmittedAnswer) {
       interval = setInterval(() => {
         setQuizTimer((prev) => {
           if (prev <= 1) {
@@ -552,15 +561,49 @@ export default function App() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled]);
+  }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled, quizSessionActive]);
 
-  const updateAdminStatus = async (quizId, showAnswer) => {
+  // 대기 화면에서 세션이 활성화되면 자동으로 퀴즈 화면으로 전환
+  useEffect(() => {
+    if (currentView === 'part2-waiting' && quizSessionActive) {
+      setHasSubmittedAnswer(false);
+      setSelectedAnswer('');
+      setQuizTimer(10);
+      setCurrentView('part2-quiz');
+    }
+    // 퀴즈 화면에서 세션이 비활성화되면 대기 화면으로 복귀
+    if (currentView === 'part2-quiz' && !quizSessionActive) {
+      setCurrentView('part2-waiting');
+    }
+  }, [quizSessionActive, currentView]);
+
+  const updateAdminStatus = async (quizId, showAnswer, sessionActive = quizSessionActive) => {
     await supabase
       .from('quiz_status')
-      .update({ current_quiz_id: quizId, show_answer: showAnswer })
+      .update({ current_quiz_id: quizId, show_answer: showAnswer, session_active: sessionActive })
       .eq('id', 1);
     setCurrentAdminQuizId(quizId);
     setAdminShowAnswer(showAnswer);
+    setQuizSessionActive(sessionActive);
+  };
+
+  // 수료평가 세션 시작 (참여자: 수료평가 대기 → 수료평가 준비)
+  const startQuizSession = async () => {
+    await supabase
+      .from('quiz_status')
+      .update({ session_active: true })
+      .eq('id', 1);
+    setQuizSessionActive(true);
+  };
+
+  // 수료평가 세션 중단 (참여자: 수료평가 준비/진행 → 수료평가 대기)
+  const stopQuizSession = async () => {
+    await supabase
+      .from('quiz_status')
+      .update({ session_active: false, show_answer: false })
+      .eq('id', 1);
+    setQuizSessionActive(false);
+    setAdminShowAnswer(false);
   };
 
   // --- PART 1 설문 응답 핸들러 ---
@@ -1741,13 +1784,84 @@ export default function App() {
                   setSelectedAnswer('');
                   setQuizTimer(10);
                   setQuizStartTime(Date.now());
-                  setCurrentView('part2-quiz');
+                  setCurrentView('part2-waiting');
                 }}
                 className="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:brightness-105 transition-all"
               >
-                대기열 진입 및 퀴즈 시작
+                대기열 진입
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ======================================= */}
+        {/* VIEW 5-B: PART 2 WAITING ROOM            */}
+        {/* ======================================= */}
+        {currentView === 'part2-waiting' && (
+          <div className="max-w-md mx-auto w-full">
+            {quizSessionActive ? (
+              /* 수료평가 준비 상태 */
+              <div className="bg-white border-2 border-cyan-300 rounded-2xl p-8 shadow-lg text-center space-y-6">
+                <div className="relative">
+                  <div className="w-20 h-20 bg-gradient-to-br from-cyan-400 to-emerald-400 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+                    <CheckCircle className="w-10 h-10 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-400 rounded-full animate-ping" style={{left: '55%'}} />
+                </div>
+                <div>
+                  <div className="inline-block bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-black px-4 py-1.5 rounded-full mb-3">
+                    ✅ 수료평가 준비
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 mt-2">평가가 곧 시작됩니다!</h3>
+                  <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                    <span className="font-bold text-cyan-600">{quizParticipant}</span>님, 대기 완료!
+                    <br/>관리자가 문제를 송출하면 자동으로 화면이 전환됩니다.
+                  </p>
+                </div>
+                <div className="flex items-center justify-center space-x-2 bg-cyan-50 border border-cyan-100 rounded-xl px-4 py-3">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-xs font-bold text-cyan-600">문제 송출 대기 중...</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setHasSubmittedAnswer(false);
+                    setSelectedAnswer('');
+                    setQuizTimer(10);
+                    setCurrentView('part2-quiz');
+                  }}
+                  className="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-md hover:brightness-105 transition-all"
+                >
+                  퀴즈 화면으로 이동
+                </button>
+              </div>
+            ) : (
+              /* 수료평가 대기 상태 */
+              <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center space-y-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-slate-200 to-slate-300 rounded-2xl flex items-center justify-center mx-auto">
+                  <Coffee className="w-10 h-10 text-slate-500 animate-bounce" />
+                </div>
+                <div>
+                  <div className="inline-block bg-slate-100 border border-slate-200 text-slate-600 text-xs font-black px-4 py-1.5 rounded-full mb-3">
+                    ⏳ 수료평가 대기
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 mt-2">대기열 진입 완료!</h3>
+                  <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                    <span className="font-bold text-slate-700">{quizParticipant}</span>님, 환영합니다!
+                    <br/>관리자가 수료평가를 시작할 때까지 잠시 대기해 주세요.
+                  </p>
+                </div>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2 text-xs text-slate-500 text-left">
+                  <p className="font-bold text-slate-700">💡 참여 안내</p>
+                  <p>• 관리자가 시작 버튼을 누르면 <span className="text-cyan-600 font-bold">수료평가 준비</span> 상태로 변경됩니다.</p>
+                  <p>• 문제당 제한시간은 <span className="text-rose-500 font-bold">10초</span>입니다.</p>
+                  <p>• 이 페이지를 닫지 마세요. 자동으로 상태가 업데이트됩니다.</p>
+                </div>
+                <div className="flex items-center justify-center space-x-2 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                  <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-xs font-bold text-amber-600">관리자 시작 신호 대기 중...</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2429,6 +2543,58 @@ export default function App() {
                         <span>새로고침</span>
                       </button>
                       <span className="bg-cyan-50 text-cyan-600 text-xs font-black px-2.5 py-1 rounded">LIVE CONTROL</span>
+                    </div>
+                  </div>
+
+                  {/* 세션 시작/중단 버튼 */}
+                  <div className={`rounded-xl p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                    quizSessionActive
+                      ? 'bg-emerald-50 border-emerald-200'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${
+                          quizSessionActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-300'
+                        }`} />
+                        <span className={`text-xs font-black ${
+                          quizSessionActive ? 'text-emerald-700' : 'text-slate-500'
+                        }`}>
+                          {quizSessionActive ? '✅ 수료평가 세션 진행 중' : '⏳ 수료평가 세션 대기 중'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 ml-4">
+                        {quizSessionActive
+                          ? '참여자들이 수료평가 준비 상태입니다. 아래에서 문제를 송출하세요.'
+                          : '참여자들이 수료평가 대기 상태입니다. 시작 버튼으로 세션을 활성화하세요.'}
+                      </p>
+                    </div>
+                    <div className="flex space-x-2 w-full sm:w-auto shrink-0">
+                      {!quizSessionActive ? (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('수료평가를 시작하시겠습니까?\n참여자들이 \'수료평가 준비\' 상태로 변경됩니다.')) {
+                              startQuizSession();
+                            }
+                          }}
+                          className="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black px-4 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          <span>시작</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('수료평가를 중단하시겠습니까?\n참여자들이 \'수료평가 대기\' 상태로 변경됩니다.')) {
+                              stopQuizSession();
+                            }
+                          }}
+                          className="flex-1 sm:flex-none bg-rose-500 hover:bg-rose-600 text-white text-xs font-black px-4 py-2 rounded-lg transition-all flex items-center space-x-1.5 shadow-sm"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>중단</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
