@@ -422,6 +422,8 @@ export default function App() {
   // --- PART 2 STATE ---
   const [quizParticipant, setQuizParticipant] = useState('');
   const [quizTimer, setQuizTimer] = useState(10);
+  const [adminTimer, setAdminTimer] = useState(10); // 관리자 화면 카운트다운
+  const adminTimerRef = useRef(null);
   const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [quizStartTime, setQuizStartTime] = useState(null);
@@ -494,6 +496,13 @@ export default function App() {
         setAdminShowAnswer(status.show_answer);
         setQuizSessionActive(status.session_active === true);
         setQuizActive(status.quiz_active === true);
+        // 초기 로딩 시 타이머 복원 (송출 중이었다면 남은 시간 계산)
+        if (status.quiz_active && status.timer_started_at) {
+          const elapsed = Math.floor((Date.now() - new Date(status.timer_started_at).getTime()) / 1000);
+          const remaining = Math.max(10 - elapsed, 0);
+          setQuizTimer(remaining);
+          setAdminTimer(remaining);
+        }
       }
     };
     loadAll();
@@ -527,23 +536,30 @@ export default function App() {
         setQuizSessionActive(next.session_active === true);
         setQuizActive(next.quiz_active === true);
 
+        // quiz_active가 새로 켜지면 (송출 개시) — 서버 타임스탬프 기준으로 타이머 동기화
+        if (!prev.quiz_active && next.quiz_active && next.timer_started_at) {
+          const elapsed = Math.floor((Date.now() - new Date(next.timer_started_at).getTime()) / 1000);
+          const remaining = Math.max(10 - elapsed, 0);
+          setQuizTimer(remaining);
+          setAdminTimer(remaining);
+          setHasSubmittedAnswer(false);
+          setSelectedAnswer('');
+          setQuizStartTime(Date.now());
+        }
+
         // 문제가 바뀐 경우에만 응답 상태 초기화
         if (prev.current_quiz_id !== next.current_quiz_id) {
           setQuizTimer(10);
+          setAdminTimer(10);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
           setQuizStartTime(Date.now());
         }
-        // quiz_active가 새로 켜지면 (송출 개시) 타이머/응답 초기화
-        if (!prev.quiz_active && next.quiz_active) {
-          setQuizTimer(10);
-          setHasSubmittedAnswer(false);
-          setSelectedAnswer('');
-          setQuizStartTime(Date.now());
-        }
+
         // 세션이 비활성화되면 참여자 타이머/응답 상태 초기화
         if (prev.session_active === true && next.session_active === false) {
           setQuizTimer(10);
+          setAdminTimer(10);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
         }
@@ -572,6 +588,25 @@ export default function App() {
     }
     return () => clearInterval(interval);
   }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled, quizActive]);
+
+  // 관리자 화면 카운트다운 타이머 (quizActive일 때 참가자와 동일하게 작동)
+  useEffect(() => {
+    if (!quizActive) {
+      setAdminTimer(10);
+      return;
+    }
+    if (adminTimer <= 0) return;
+    const interval = setInterval(() => {
+      setAdminTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [quizActive, adminTimer]);
 
   // 화면 전환 로직
   // - 세션 시작(session_active=true): 대기 → 수료평가 준비 (part2-waiting 유지, quizSessionActive만 변경)
@@ -630,23 +665,26 @@ export default function App() {
 
   // 문제 송출 개시 (quiz_active=true → 참여자 화면에 문제 공개)
   const broadcastQuiz = async (quizId) => {
+    const now = new Date().toISOString();
     await supabase
       .from('quiz_status')
-      .update({ current_quiz_id: quizId, quiz_active: true, show_answer: false })
+      .update({ current_quiz_id: quizId, quiz_active: true, show_answer: false, timer_started_at: now })
       .eq('id', 1);
     setCurrentAdminQuizId(quizId);
     setQuizActive(true);
     setAdminShowAnswer(false);
+    setAdminTimer(10);
   };
 
   // 문제 송출 중단 (quiz_active=false → 참여자 준비 화면으로 복귀)
   const stopBroadcast = async () => {
     await supabase
       .from('quiz_status')
-      .update({ quiz_active: false, show_answer: false })
+      .update({ quiz_active: false, show_answer: false, timer_started_at: null })
       .eq('id', 1);
     setQuizActive(false);
     setAdminShowAnswer(false);
+    setAdminTimer(10);
   };
 
   // --- PART 1 설문 응답 핸들러 ---
@@ -2652,12 +2690,40 @@ export default function App() {
                     return (
                       <div className="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
 
-                        {/* 문제 정보 */}
+                        {/* 문제 정보 + 카운트다운 */}
                         <div className="space-y-3">
-                          <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
+                          <div className="flex items-center justify-between">
+                            <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
+                            {/* 카운트다운 타이머 */}
+                            {quizActive && (
+                              <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl font-black text-sm transition-all ${
+                                adminTimer <= 3
+                                  ? 'bg-rose-500 text-white animate-pulse'
+                                  : adminTimer <= 5
+                                    ? 'bg-amber-400 text-white'
+                                    : 'bg-slate-200 text-slate-700'
+                              }`}>
+                                <span className="text-[10px] font-bold opacity-80">제한시간</span>
+                                <span className="text-xl font-black tabular-nums">{adminTimer}</span>
+                              </div>
+                            )}
+                          </div>
                           <h5 className="font-extrabold text-slate-800 text-xl mt-2 leading-snug">
                             Q{activeQuiz.id}. {activeQuiz.question}
                           </h5>
+
+                          {/* 카운트다운 게이지 바 */}
+                          {quizActive && (
+                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-1000 ${
+                                  adminTimer <= 3 ? 'bg-rose-500' :
+                                  adminTimer <= 5 ? 'bg-amber-400' : 'bg-cyan-500'
+                                }`}
+                                style={{ width: `${(adminTimer / 10) * 100}%` }}
+                              />
+                            </div>
+                          )}
 
                           {/* 정답 공개 후에만 정답 크게 표시 */}
                           {adminShowAnswer && (
