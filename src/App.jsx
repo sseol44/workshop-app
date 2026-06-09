@@ -406,6 +406,7 @@ export default function App() {
   const [currentAdminQuizId, setCurrentAdminQuizId] = useState(1);
   const [adminShowAnswer, setAdminShowAnswer] = useState(false);
   const [quizSessionActive, setQuizSessionActive] = useState(false); // 수료평가 세션 활성 여부
+  const [quizQuestionVisible, setQuizQuestionVisible] = useState(false); // 문제 공개 여부 (송출 개시 후)
 
   // --- PART 1 STATE ---
   const [userNickname, setUserNickname] = useState('');
@@ -492,6 +493,7 @@ export default function App() {
         setCurrentAdminQuizId(status.current_quiz_id);
         setAdminShowAnswer(status.show_answer);
         setQuizSessionActive(status.session_active === true);
+        setQuizQuestionVisible(status.question_visible === true);
       }
     };
     loadAll();
@@ -523,9 +525,10 @@ export default function App() {
         setCurrentAdminQuizId(next.current_quiz_id);
         setAdminShowAnswer(next.show_answer);
         setQuizSessionActive(next.session_active === true);
-        // 문제가 바뀐 경우에만 응답 상태 초기화
-        // show_answer만 변경(정답 공개/숨기기)된 경우엔 selectedAnswer, hasSubmittedAnswer 유지
-        if (prev.current_quiz_id !== next.current_quiz_id) {
+        setQuizQuestionVisible(next.question_visible === true);
+        // 문제가 새로 송출된 경우 응답 상태 초기화
+        if (prev.current_quiz_id !== next.current_quiz_id || 
+            (prev.question_visible !== true && next.question_visible === true)) {
           setQuizTimer(10);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
@@ -543,10 +546,10 @@ export default function App() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // 10초 카운트다운 타이머 (세션이 활성화되어 있고 문제가 공개된 경우에만 작동)
+  // 10초 카운트다운 타이머 (문제가 송출된 경우에만 작동)
   useEffect(() => {
     let interval;
-    if (currentView === 'part2-quiz' && quizSessionActive && quizTimer > 0 && !hasSubmittedAnswer) {
+    if (currentView === 'part2-quiz' && quizQuestionVisible && quizSessionActive && quizTimer > 0 && !hasSubmittedAnswer) {
       interval = setInterval(() => {
         setQuizTimer((prev) => {
           if (prev <= 1) {
@@ -561,49 +564,63 @@ export default function App() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled, quizSessionActive]);
+  }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled, quizSessionActive, quizQuestionVisible]);
 
-  // 대기 화면에서 세션이 활성화되면 자동으로 퀴즈 화면으로 전환
+  // 문제가 송출(question_visible=true)되면 대기 화면 → 퀴즈 화면으로 자동 전환
   useEffect(() => {
-    if (currentView === 'part2-waiting' && quizSessionActive) {
+    if (currentView === 'part2-waiting' && quizSessionActive && quizQuestionVisible) {
       setHasSubmittedAnswer(false);
       setSelectedAnswer('');
       setQuizTimer(10);
       setCurrentView('part2-quiz');
     }
-    // 퀴즈 화면에서 세션이 비활성화되면 대기 화면으로 복귀
-    if (currentView === 'part2-quiz' && !quizSessionActive) {
+    // 세션이 중단되면 퀴즈/대기 화면 → 수료평가 대기로 복귀
+    if ((currentView === 'part2-quiz' || currentView === 'part2-waiting') && !quizSessionActive) {
       setCurrentView('part2-waiting');
     }
-  }, [quizSessionActive, currentView]);
+  }, [quizSessionActive, quizQuestionVisible, currentView]);
 
-  const updateAdminStatus = async (quizId, showAnswer, sessionActive = quizSessionActive) => {
+  const updateAdminStatus = async (quizId, showAnswer, sessionActive = quizSessionActive, questionVisible = quizQuestionVisible) => {
     await supabase
       .from('quiz_status')
-      .update({ current_quiz_id: quizId, show_answer: showAnswer, session_active: sessionActive })
+      .update({ current_quiz_id: quizId, show_answer: showAnswer, session_active: sessionActive, question_visible: questionVisible })
       .eq('id', 1);
     setCurrentAdminQuizId(quizId);
     setAdminShowAnswer(showAnswer);
     setQuizSessionActive(sessionActive);
+    setQuizQuestionVisible(questionVisible);
   };
 
-  // 수료평가 세션 시작 (참여자: 수료평가 대기 → 수료평가 준비)
+  // 수료평가 세션 시작 (참여자: 수료평가 대기 → 수료평가 준비, 아직 문제 미공개)
   const startQuizSession = async () => {
     await supabase
       .from('quiz_status')
-      .update({ session_active: true })
+      .update({ session_active: true, question_visible: false })
       .eq('id', 1);
     setQuizSessionActive(true);
+    setQuizQuestionVisible(false);
   };
 
   // 수료평가 세션 중단 (참여자: 수료평가 준비/진행 → 수료평가 대기)
   const stopQuizSession = async () => {
     await supabase
       .from('quiz_status')
-      .update({ session_active: false, show_answer: false })
+      .update({ session_active: false, show_answer: false, question_visible: false })
       .eq('id', 1);
     setQuizSessionActive(false);
     setAdminShowAnswer(false);
+    setQuizQuestionVisible(false);
+  };
+
+  // 문제 송출 개시 (참여자: 수료평가 준비 → 퀴즈 화면, 해당 문제 공개)
+  const broadcastQuestion = async (quizId) => {
+    await supabase
+      .from('quiz_status')
+      .update({ current_quiz_id: quizId, show_answer: false, question_visible: true })
+      .eq('id', 1);
+    setCurrentAdminQuizId(quizId);
+    setAdminShowAnswer(false);
+    setQuizQuestionVisible(true);
   };
 
   // --- PART 1 설문 응답 핸들러 ---
@@ -2708,22 +2725,30 @@ export default function App() {
                     );
                   })()}
 
-                  {/* 퀴즈 셀렉터 (문제 교체) */}
+                  {/* 퀴즈 셀렉터 (문제 송출) */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-2">원격 송출 문제 선택</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-bold text-slate-500">원격 송출 문제 선택</label>
+                      {!quizSessionActive && (
+                        <span className="text-[10px] text-amber-500 font-bold">⚠ 시작 버튼을 먼저 눌러주세요</span>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {quizList.map(q => (
                         <button
                           key={q.id}
+                          disabled={!quizSessionActive}
                           onClick={() => {
-                            if (window.confirm(`Q${q.id} 번 문제를 정말로 실시간 송출하시겠습니까?`)) {
-                              updateAdminStatus(q.id, false);
+                            if (window.confirm(`Q${q.id} 번 문제를 참가자들에게 송출하시겠습니까?\n참가자들의 화면에 문제가 즉시 공개됩니다.`)) {
+                              broadcastQuestion(q.id);
                             }
                           }}
                           className={`py-2 px-3 text-xs font-black rounded-lg border text-left transition-all
-                            ${currentAdminQuizId === q.id 
-                              ? 'bg-cyan-500 border-cyan-500 text-white shadow-sm' 
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'}`}
+                            ${!quizSessionActive
+                              ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-50'
+                              : currentAdminQuizId === q.id && quizQuestionVisible
+                                ? 'bg-cyan-500 border-cyan-500 text-white shadow-sm'
+                                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'}`}
                         >
                           Q{q.id} 송출 개시
                         </button>
