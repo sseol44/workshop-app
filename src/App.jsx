@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { 
   Users, HelpCircle, BarChart3, Settings, LogIn, ChevronRight, ChevronLeft, 
@@ -117,6 +117,42 @@ const playSound = (type) => {
   }
 };
 
+// ===== 룰렛 휠 서브컴포넌트 =====
+function RouletteWheel({ participants, canvasRef, angleRef, drawFn }) {
+  useEffect(() => {
+    if (canvasRef.current && participants.length > 0) {
+      drawFn(canvasRef.current, participants, angleRef.current);
+    }
+  }, [participants, canvasRef, angleRef, drawFn]);
+
+  return (
+    <div className="flex flex-col items-center space-y-2 w-full">
+      <div className="relative flex items-center justify-center">
+        {/* 상단 화살표 포인터 */}
+        <div className="absolute -top-3 z-20 flex flex-col items-center drop-shadow-lg">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="#ef4444">
+            <path d="M12 20l-8-14h16z"/>
+          </svg>
+        </div>
+        {/* 바깥 링 */}
+        <div className="rounded-full p-1.5 bg-gradient-to-br from-slate-700 to-slate-900 shadow-2xl">
+          <canvas
+            ref={canvasRef}
+            width={300}
+            height={300}
+            className="rounded-full block"
+          />
+        </div>
+      </div>
+      {participants.length > 0 && (
+        <p className="text-[10px] text-slate-400 font-bold">
+          총 {participants.length}명 참여 · 화살표 위치 당첨
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState('main'); 
   
@@ -155,6 +191,10 @@ export default function App() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawMethod, setDrawMethod] = useState('roulette'); 
   const [rouletteDegree, setRouletteDegree] = useState(0);
+  const [rouletteSpinning, setRouletteSpinning] = useState(false);
+  const rouletteCanvasRef = useRef(null);
+  const rouletteAnimRef = useRef(null);
+  const rouletteAngleRef = useRef(0);
   const [isRaffleModalOpen, setIsRaffleModalOpen] = useState(false);
   const [isRaffleAssigned, setIsRaffleAssigned] = useState(false);
   const [isLiveQuizModalOpen, setIsLiveQuizModalOpen] = useState(false);
@@ -552,10 +592,87 @@ export default function App() {
   };
 
   // --- 실시간 퀴즈 정답자 추첨 시뮬레이터 ---
+  // Canvas 룰렛 그리기 함수
+  const drawRouletteWheel = useCallback((canvas, participants, angleDeg) => {
+    if (!canvas || participants.length === 0) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+    const R = Math.min(cx, cy) - 8;
+    const n = participants.length;
+    const sliceAngle = (2 * Math.PI) / n;
+    const COLORS = [
+      '#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6',
+      '#ec4899','#14b8a6','#f97316','#6366f1','#84cc16',
+      '#0ea5e9','#a855f7','#22c55e','#fb923c','#e879f9',
+      '#38bdf8','#4ade80','#fbbf24','#f87171','#c084fc',
+    ];
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 바깥 그림자 원
+    ctx.beginPath();
+    ctx.arc(cx, cy, R + 6, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fill();
+
+    const startAngle = (angleDeg * Math.PI) / 180 - Math.PI / 2;
+
+    participants.forEach((p, i) => {
+      const a0 = startAngle + sliceAngle * i;
+      const a1 = a0 + sliceAngle;
+      const mid = (a0 + a1) / 2;
+
+      // 파이 조각
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R, a0, a1);
+      ctx.closePath();
+      ctx.fillStyle = COLORS[i % COLORS.length];
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 닉네임 텍스트
+      ctx.save();
+      ctx.translate(cx + Math.cos(mid) * R * 0.62, cy + Math.sin(mid) * R * 0.62);
+      ctx.rotate(mid + Math.PI / 2);
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(9, Math.min(13, 120 / n))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.4)';
+      ctx.shadowBlur = 3;
+      // 긴 닉네임 자르기
+      const label = p.nickname.length > 6 ? p.nickname.slice(0, 5) + '…' : p.nickname;
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+    });
+
+    // 중앙 원
+    ctx.beginPath();
+    ctx.arc(cx, cy, 22, 0, 2 * Math.PI);
+    ctx.fillStyle = '#1e293b';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 중앙 별 모양
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('★', cx, cy);
+  }, []);
+
   const startDrawing = () => {
     const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
     const correctResponses = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz.id) && r.is_correct);
-    
+
     if (correctResponses.length === 0) {
       triggerAlert("추첨 불가능", "해당 문제의 정답자가 존재하지 않아 추첨할 수 없습니다.");
       return;
@@ -566,16 +683,52 @@ export default function App() {
     if (soundEnabled) playSound('drumroll');
 
     if (drawMethod === 'roulette') {
-      const extraSpin = 1440 + Math.floor(Math.random() * 360);
-      setRouletteDegree(prev => prev + extraSpin);
-      
-      setTimeout(() => {
-        const randomIndex = Math.floor(Math.random() * correctResponses.length);
-        const winner = correctResponses[randomIndex];
-        setDrawWinner(winner);
-        setIsDrawing(false);
-        if (soundEnabled) playSound('success');
-      }, 3000);
+      const canvas = rouletteCanvasRef.current;
+      if (!canvas) return;
+
+      // 당첨자 결정
+      const winnerIndex = Math.floor(Math.random() * correctResponses.length);
+      const winner = correctResponses[winnerIndex];
+      const n = correctResponses.length;
+      const sliceAngle = 360 / n;
+
+      // 당첨 조각이 상단(화살표 위치)에 오도록 목표 각도 계산
+      // 화살표는 12시 방향 (270도 = -90도)
+      // 당첨자 조각 중앙이 상단에 오려면: -(winnerIndex * sliceAngle + sliceAngle/2)
+      const targetAngle = -(winnerIndex * sliceAngle + sliceAngle / 2);
+      // 최소 5바퀴 + 목표 각도
+      const totalSpin = 360 * 6 + ((targetAngle % 360) + 360) % 360;
+
+      const duration = 5500; // ms
+      const startTime = performance.now();
+      const startAngle = rouletteAngleRef.current;
+
+      const animate = (now) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // easeOutCubic — 천천히 감속
+        const ease = 1 - Math.pow(1 - progress, 4);
+        const currentAngle = startAngle + totalSpin * ease;
+        rouletteAngleRef.current = currentAngle;
+
+        drawRouletteWheel(canvas, correctResponses, currentAngle);
+
+        if (progress < 1) {
+          rouletteAnimRef.current = requestAnimationFrame(animate);
+        } else {
+          // 완전히 멈춤
+          rouletteAngleRef.current = startAngle + totalSpin;
+          setRouletteSpinning(false);
+          setIsDrawing(false);
+          setDrawWinner(winner);
+          if (soundEnabled) playSound('success');
+        }
+      };
+
+      setRouletteSpinning(true);
+      rouletteAnimRef.current = requestAnimationFrame(animate);
+
     } else {
       setTimeout(() => {
         const randomIndex = Math.floor(Math.random() * correctResponses.length);
@@ -2364,26 +2517,12 @@ export default function App() {
                     )}
                   </div>
                 ) : drawMethod === 'roulette' ? (
-                  <div className="flex flex-col items-center">
-                    <div 
-                      className="w-52 h-52 rounded-full border-4 border-dashed border-cyan-500 flex flex-col items-center justify-center font-black text-xs bg-white text-cyan-600 shadow-inner transition-transform duration-[3000ms] ease-out relative overflow-hidden"
-                      style={{ transform: `rotate(${rouletteDegree}deg)` }}
-                    >
-                      <div className="absolute inset-0 flex flex-wrap items-center justify-center p-4 content-center bg-radial-gradient">
-                        {correctResponses.map((r, idx) => (
-                          <span 
-                            key={idx} 
-                            className="text-[9px] font-extrabold text-slate-800 bg-cyan-100/90 px-1.5 py-0.5 rounded m-0.5 shadow-xs border border-cyan-200/50"
-                          >
-                            {r.nickname}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <svg className="w-8 h-8 text-rose-500 -mt-3 z-10" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 3l8 14H4z" />
-                    </svg>
-                  </div>
+                  <RouletteWheel
+                    participants={correctResponses}
+                    canvasRef={rouletteCanvasRef}
+                    angleRef={rouletteAngleRef}
+                    drawFn={drawRouletteWheel}
+                  />
                 ) : (
                   <div className="space-y-4 w-full text-center">
                     <div className="flex justify-around items-end h-44 w-full px-4 border-b border-dashed border-slate-200 pb-2">
@@ -2434,6 +2573,16 @@ export default function App() {
                         return;
                       }
                       setIsRaffleAssigned(true);
+                      rouletteAngleRef.current = 0;
+                      // 배정 직후 Canvas 초기 그리기 (setTimeout으로 DOM 업데이트 대기)
+                      setTimeout(() => {
+                        if (rouletteCanvasRef.current) {
+                          const correctList = quizResponses.filter(r =>
+                            Number(r.quiz_id) === Number(currentAdminQuizId) && r.is_correct
+                          );
+                          drawRouletteWheel(rouletteCanvasRef.current, correctList, 0);
+                        }
+                      }, 100);
                       triggerAlert("배정 완료", `정답자 ${correctCount}명이 추첨판에 성공적으로 배치되었습니다.`);
                     }}
                     className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl shadow transition-all"
