@@ -158,6 +158,7 @@ export default function App() {
   const [isRaffleModalOpen, setIsRaffleModalOpen] = useState(false);
   const [isRaffleAssigned, setIsRaffleAssigned] = useState(false);
   const [isLiveQuizModalOpen, setIsLiveQuizModalOpen] = useState(false);
+  const [isQuizBankModalOpen, setIsQuizBankModalOpen] = useState(false);
 
   // 관리자 모드 비밀번호 입력
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
@@ -737,6 +738,10 @@ export default function App() {
       await supabase.from('quiz_list').insert([quizData]);
     }
     setIsQuizModalOpen(false);
+    // 편집 보드 모달에서 열었을 경우 다시 편집 보드로 복귀
+    if (isQuizBankModalOpen) {
+      setIsQuizBankModalOpen(true);
+    }
   };
 
   const handleDeleteQuiz = async (id) => {
@@ -1849,47 +1854,80 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                 {/* 좌측: 퀴즈 문제 은행 편집 보드 */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b pb-3">
-                    <h5 className="font-bold text-slate-800 text-sm flex items-center space-x-1.5">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center space-x-1.5 border-b pb-3 mb-4">
                       <Edit2 className="w-4 h-4 text-cyan-500" />
-                      <span>퀴즈 문제 은행 편집 보드</span>
-                    </h5>
-                    <button
-                      onClick={() => openQuizModal(null)}
-                      className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-1.5 px-3 rounded-lg flex items-center space-x-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>새 퀴즈 추가</span>
-                    </button>
-                  </div>
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                    {quizList.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-6">등록된 퀴즈가 없습니다.</p>
-                    )}
-                    {quizList.map(q => (
-                      <div key={q.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-1.5 flex-wrap gap-1">
-                            <span className="bg-slate-200 text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded">Q{q.id}</span>
-                            <span className="bg-cyan-100 text-cyan-800 text-[9px] font-bold px-1.5 py-0.5 rounded">
-                              {q.type === 'choice' ? '객관식' : q.type === 'ox' ? 'OX' : '주관식'}
-                            </span>
+                      <h5 className="font-bold text-slate-800 text-sm">퀴즈 문제 은행 편집 보드</h5>
+                    </div>
+
+                    {/* 문제 유형별 통계 */}
+                    {(() => {
+                      const choiceCnt = quizList.filter(q => q.type === 'choice').length;
+                      const oxCnt = quizList.filter(q => q.type === 'ox').length;
+                      const shortCnt = quizList.filter(q => q.type === 'short').length;
+                      const total = quizList.length;
+                      return (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-3 text-center">
+                              <p className="text-[10px] text-cyan-600 font-bold">객관식</p>
+                              <p className="text-2xl font-black text-cyan-700">{choiceCnt}</p>
+                              <p className="text-[10px] text-cyan-500">문제</p>
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-center">
+                              <p className="text-[10px] text-emerald-600 font-bold">OX 퀴즈</p>
+                              <p className="text-2xl font-black text-emerald-700">{oxCnt}</p>
+                              <p className="text-[10px] text-emerald-500">문제</p>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-center">
+                              <p className="text-[10px] text-amber-600 font-bold">주관식</p>
+                              <p className="text-2xl font-black text-amber-700">{shortCnt}</p>
+                              <p className="text-[10px] text-amber-500">문제</p>
+                            </div>
+                            <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 text-center">
+                              <p className="text-[10px] text-slate-500 font-bold">총 문제 수</p>
+                              <p className="text-2xl font-black text-slate-700">{total}</p>
+                              <p className="text-[10px] text-slate-400">문제</p>
+                            </div>
                           </div>
-                          <p className="text-xs font-bold text-slate-800 mt-1 truncate">{q.question.slice(0, 24)}...</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">정답: {q.answer} / {q.score}점</p>
+
+                          {/* 문제 목록 미리보기 */}
+                          {total > 0 && (
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1.5 max-h-[140px] overflow-y-auto">
+                              {quizList.map(q => (
+                                <div key={q.id} className="flex items-center space-x-2 text-xs">
+                                  <span className="bg-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0">Q{q.id}</span>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                    q.type === 'choice' ? 'bg-cyan-100 text-cyan-700' :
+                                    q.type === 'ox' ? 'bg-emerald-100 text-emerald-700' :
+                                    'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {q.type === 'choice' ? '객관식' : q.type === 'ox' ? 'OX' : '주관식'}
+                                  </span>
+                                  <span className="text-slate-600 truncate">{q.question.slice(0, 18)}...</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {total === 0 && (
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
+                              <p className="text-xs text-slate-400">등록된 퀴즈가 없습니다.</p>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex space-x-1 ml-2">
-                          <button onClick={() => openQuizModal(q)} className="p-1.5 hover:bg-slate-200 text-slate-500 rounded">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDeleteQuiz(q.id)} className="p-1.5 hover:bg-rose-100 text-rose-500 rounded">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })()}
                   </div>
+
+                  {/* 편집 보드 열기 버튼 */}
+                  <button
+                    onClick={() => setIsQuizBankModalOpen(true)}
+                    className="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center space-x-2 text-sm"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>문제 편집 보드 열기</span>
+                  </button>
                 </div>
 
                 {/* 가운데: 실시간 라이브 퀴즈 버튼 */}
@@ -2442,6 +2480,148 @@ export default function App() {
           </div>
         );
       })()}
+
+      {/* ===================================== */}
+      {/* 퀴즈 문제 은행 편집 보드 팝업 모달     */}
+      {/* ===================================== */}
+      {isQuizBankModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/70 z-50 flex items-center justify-center p-3">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center">
+                  <Edit2 className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-800 text-base">퀴즈 문제 은행 편집 보드</h3>
+                  <p className="text-[10px] text-slate-400">문제 추가 · 수정 · 삭제</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => { openQuizModal(null); }}
+                  className="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2 px-3 rounded-lg flex items-center space-x-1 transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>새 퀴즈 추가</span>
+                </button>
+                <button
+                  onClick={() => setIsQuizBankModalOpen(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* 통계 요약 바 */}
+            {(() => {
+              const choiceCnt = quizList.filter(q => q.type === 'choice').length;
+              const oxCnt = quizList.filter(q => q.type === 'ox').length;
+              const shortCnt = quizList.filter(q => q.type === 'short').length;
+              return (
+                <div className="flex items-center space-x-3 px-6 py-3 bg-slate-50 border-b border-slate-100 shrink-0">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="bg-cyan-100 text-cyan-700 text-[10px] font-black px-2 py-0.5 rounded-full">객관식 {choiceCnt}문제</span>
+                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded-full">OX {oxCnt}문제</span>
+                    <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-0.5 rounded-full">주관식 {shortCnt}문제</span>
+                  </div>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-xs font-bold text-slate-600">총 {quizList.length}문제</span>
+                </div>
+              );
+            })()}
+
+            {/* 문제 목록 */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+              {quizList.length === 0 && (
+                <div className="text-center py-16 text-slate-400">
+                  <HelpCircle className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                  <p className="font-bold">등록된 퀴즈가 없습니다.</p>
+                  <p className="text-xs mt-1">상단 '새 퀴즈 추가' 버튼으로 문제를 등록해주세요.</p>
+                </div>
+              )}
+              {quizList.map((q, idx) => (
+                <div key={q.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-2 flex-wrap gap-1">
+                      <span className="bg-slate-700 text-white text-[10px] font-black px-2 py-0.5 rounded">Q{idx + 1}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        q.type === 'choice' ? 'bg-cyan-100 text-cyan-700' :
+                        q.type === 'ox' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {q.type === 'choice' ? '객관식' : q.type === 'ox' ? 'OX' : '주관식'}
+                      </span>
+                      <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold">{q.score}점</span>
+                    </div>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => openQuizModal(q)}
+                        className="flex items-center space-x-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-bold py-1.5 px-2.5 rounded-lg transition-all"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>수정</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQuiz(q.id)}
+                        className="flex items-center space-x-1 bg-white border border-rose-100 hover:bg-rose-50 text-rose-500 text-xs font-bold py-1.5 px-2.5 rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>삭제</span>
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold text-slate-800">{q.question}</p>
+                  {q.type === 'choice' && q.options?.length > 0 && (
+                    <div className="grid grid-cols-2 gap-1.5 mt-1">
+                      {q.options.map((opt, i) => (
+                        <div key={i} className={`text-xs px-2.5 py-1.5 rounded-lg border ${
+                          opt === q.answer
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold'
+                            : 'bg-white border-slate-200 text-slate-600'
+                        }`}>
+                          {opt === q.answer && <span className="mr-1">✅</span>}{opt}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {q.type === 'ox' && (
+                    <div className="flex space-x-2 mt-1">
+                      {['O', 'X'].map(opt => (
+                        <div key={opt} className={`text-sm font-black px-4 py-1.5 rounded-lg border ${
+                          opt === q.answer
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            : 'bg-white border-slate-200 text-slate-400'
+                        }`}>
+                          {opt === q.answer && <span className="mr-1 text-xs">✅</span>}{opt}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center space-x-1 pt-1">
+                    <span className="text-[10px] text-slate-400">정답:</span>
+                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{q.answer}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* 푸터 */}
+            <div className="px-6 py-4 border-t border-slate-200 shrink-0 flex justify-end">
+              <button
+                onClick={() => setIsQuizBankModalOpen(false)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-5 rounded-xl text-sm transition-all"
+              >
+                닫기
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* QUIZ WRITE/EDIT MODAL (ADMIN ONLY) */}
       {isQuizModalOpen && (
