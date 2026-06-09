@@ -421,6 +421,7 @@ export default function App() {
 
   // --- PART 2 STATE ---
   const [quizParticipant, setQuizParticipant] = useState('');
+  const [waitingParticipants, setWaitingParticipants] = useState([]); // 대기열 참여자 목록
   const [quizTimer, setQuizTimer] = useState(10);
   const [adminTimer, setAdminTimer] = useState(10); // 관리자 화면 카운트다운
   const adminTimerRef = useRef(null);
@@ -491,6 +492,12 @@ export default function App() {
         }));
         setQuizResponses(normalized);
       }
+      // 대기열 참여자 로드
+      const { data: participants } = await supabase
+        .from('quiz_participants')
+        .select('*')
+        .order('joined_at', { ascending: true });
+      if (participants) setWaitingParticipants(participants);
       if (status) {
         setCurrentAdminQuizId(status.current_quiz_id);
         setAdminShowAnswer(status.show_answer);
@@ -518,7 +525,6 @@ export default function App() {
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quiz_responses' }, (payload) => {
         const row = payload.new;
-        // Supabase Realtime에서 타입이 문자열로 올 수 있어 명시적으로 변환
         const normalized = {
           ...row,
           quiz_id: Number(row.quiz_id),
@@ -527,6 +533,19 @@ export default function App() {
           time_taken: Number(row.time_taken || 0),
         };
         setQuizResponses(prev => [...prev, normalized]);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quiz_participants' }, (payload) => {
+        setWaitingParticipants(prev => {
+          const exists = prev.find(p => p.nickname === payload.new.nickname);
+          return exists ? prev : [...prev, payload.new];
+        });
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'quiz_participants' }, (payload) => {
+        setWaitingParticipants(prev => prev.filter(p => p.id !== payload.old.id));
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_participants' }, async () => {
+        const { data } = await supabase.from('quiz_participants').select('*').order('joined_at', { ascending: true });
+        if (data) setWaitingParticipants(data);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_status' }, (payload) => {
         const prev = payload.old;
@@ -1147,7 +1166,9 @@ export default function App() {
   const resetPart2Data = async () => {
     if (window.confirm("진짜로 모든 퀴즈 참가자 제출 데이터 및 랭킹 정보를 초기화하시겠습니까?")) {
       await supabase.from('quiz_responses').delete().neq('id', 0);
+      await supabase.from('quiz_participants').delete().neq('id', 0);
       setQuizResponses([]);
+      setWaitingParticipants([]);
       await updateAdminStatus(1, false);
       triggerAlert("초기화 완료", "파트2 데이터가 완벽하게 초기화되었습니다.");
     }
@@ -1856,11 +1877,15 @@ export default function App() {
               </div>
 
               <button 
-                onClick={() => {
+                onClick={async () => {
                   if(!quizParticipant.trim()) {
                     triggerAlert("이름 필요", "실명 기반의 닉네임을 적어주세요!");
                     return;
                   }
+                  // 대기열에 참여자 등록 (중복 방지)
+                  await supabase.from('quiz_participants')
+                    .upsert([{ nickname: quizParticipant, status: 'waiting', joined_at: new Date().toISOString() }],
+                      { onConflict: 'nickname' });
                   setHasSubmittedAnswer(false);
                   setSelectedAnswer('');
                   setQuizTimer(10);
@@ -2737,17 +2762,44 @@ export default function App() {
                           )}
                         </div>
 
-                        {/* 실시간 제출 완료인원 카운터 */}
-                        <div className="bg-white border border-cyan-200 rounded-xl px-4 py-3 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                            <span className="text-xs font-bold text-slate-600">실시간 제출 완료인원</span>
+                        {/* 접속 중인 참여자 수 카드 */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                              <span className="text-xs font-bold text-slate-600">접속 대기 인원</span>
+                            </div>
+                            <div className="flex items-baseline space-x-1">
+                              <span className="text-2xl font-black text-emerald-600">{waitingParticipants.length}</span>
+                              <span className="text-xs text-slate-400 font-bold">명</span>
+                            </div>
                           </div>
-                          <div className="flex items-baseline space-x-1">
-                            <span className="text-2xl font-black text-cyan-600">{totalResponses}</span>
-                            <span className="text-xs text-slate-400 font-bold">명</span>
+                          {/* 실시간 제출 완료인원 카운터 */}
+                          <div className="bg-white border border-cyan-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                              <span className="text-xs font-bold text-slate-600">제출 완료인원</span>
+                            </div>
+                            <div className="flex items-baseline space-x-1">
+                              <span className="text-2xl font-black text-cyan-600">{totalResponses}</span>
+                              <span className="text-xs text-slate-400 font-bold">명</span>
+                            </div>
                           </div>
                         </div>
+
+                        {/* 대기열 참여자 목록 (펼쳐보기) */}
+                        {waitingParticipants.length > 0 && (
+                          <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 space-y-2">
+                            <p className="text-[10px] font-bold text-slate-500">접속 중인 참여자 ({waitingParticipants.length}명)</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {waitingParticipants.map((p, i) => (
+                                <span key={p.id || i} className="bg-white border border-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  {p.nickname}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* 정답 공개 전: 제출 현황만 표시 / 공개 후: 정답·오답 비율 */}
                         {!adminShowAnswer ? (
