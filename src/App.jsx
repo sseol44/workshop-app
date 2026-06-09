@@ -117,7 +117,248 @@ const playSound = (type) => {
   }
 };
 
-// ===== 룰렛 휠 서브컴포넌트 =====
+// ===== 사다리 게임 서브컴포넌트 =====
+function LadderGame({ participants, isDrawing, onWinner }) {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+  const ladderDataRef = useRef(null); // { cols, rungs, paths }
+
+  const COLORS = [
+    '#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6',
+    '#ec4899','#14b8a6','#f97316','#6366f1','#22c55e',
+  ];
+
+  // 사다리 구조 생성
+  const buildLadder = useCallback((n, rows) => {
+    // rungs[row][col] = true → col~col+1 사이에 가로줄
+    const rungs = Array.from({ length: rows }, () => Array(n - 1).fill(false));
+    for (let row = 0; row < rows; row++) {
+      let col = 0;
+      while (col < n - 1) {
+        if (Math.random() < 0.45) {
+          rungs[row][col] = true;
+          col += 2; // 인접 가로줄 방지
+        } else {
+          col++;
+        }
+      }
+    }
+    return rungs;
+  }, []);
+
+  // 각 참여자의 경로 계산
+  const calcPaths = useCallback((n, rungs, rows) => {
+    return Array.from({ length: n }, (_, startCol) => {
+      const path = [{ row: 0, col: startCol }];
+      let col = startCol;
+      for (let row = 0; row < rows; row++) {
+        // 오른쪽 가로줄
+        if (col < n - 1 && rungs[row][col]) {
+          col++;
+        // 왼쪽 가로줄
+        } else if (col > 0 && rungs[row][col - 1]) {
+          col--;
+        }
+        path.push({ row: row + 1, col });
+      }
+      return path;
+    });
+  }, []);
+
+  // Canvas 전체 그리기
+  const draw = useCallback((canvas, participants, rungs, rows, progressMap, highlightIdx) => {
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    const H = canvas.height;
+    const n = participants.length;
+    const PAD_X = 36;
+    const PAD_TOP = 44;
+    const PAD_BOT = 44;
+    const colW = (W - PAD_X * 2) / (n - 1 || 1);
+    const rowH = (H - PAD_TOP - PAD_BOT) / rows;
+
+    const cx = (col) => PAD_X + col * colW;
+    const cy = (row) => PAD_TOP + row * rowH;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 세로줄
+    for (let col = 0; col < n; col++) {
+      ctx.beginPath();
+      ctx.moveTo(cx(col), PAD_TOP);
+      ctx.lineTo(cx(col), PAD_TOP + rows * rowH);
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // 가로줄
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < n - 1; col++) {
+        if (rungs[row][col]) {
+          ctx.beginPath();
+          ctx.moveTo(cx(col), cy(row) + rowH * 0.5);
+          ctx.lineTo(cx(col + 1), cy(row) + rowH * 0.5);
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 진행 경로 그리기 (애니메이션 중)
+    if (progressMap) {
+      participants.forEach((p, idx) => {
+        const path = progressMap.paths[idx];
+        const progress = progressMap.progresses[idx]; // 0~1
+        const totalSteps = path.length - 1;
+        const currentStep = Math.min(Math.floor(progress * totalSteps), totalSteps - 1);
+        const stepFrac = (progress * totalSteps) - currentStep;
+
+        const isHighlight = idx === highlightIdx;
+        const color = COLORS[idx % COLORS.length];
+
+        ctx.beginPath();
+        // 이미 지나온 경로
+        for (let s = 0; s <= currentStep; s++) {
+          const from = path[s];
+          const to = path[s + 1] || path[s];
+          if (s === 0) ctx.moveTo(cx(from.col), cy(from.row));
+          if (s < currentStep) {
+            ctx.lineTo(cx(to.col), cy(to.row + (to.row > from.row ? 0 : 0)));
+            // 가로 이동이면 같은 y
+            const midY = from.row === to.row ? cy(from.row) + rowH * 0.5 : cy(to.row);
+            ctx.lineTo(cx(to.col), midY);
+          } else {
+            // 현재 step 중간
+            const fromX = cx(from.col);
+            const toX = cx(to.col);
+            const fromY = from.row === to.row ? cy(from.row) + rowH * 0.5 : cy(from.row);
+            const toY = from.row === to.row ? cy(to.row) + rowH * 0.5 : cy(to.row);
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(fromX + (toX - fromX) * stepFrac, fromY + (toY - fromY) * stepFrac);
+          }
+        }
+        ctx.strokeStyle = isHighlight ? color : color + '88';
+        ctx.lineWidth = isHighlight ? 4 : 2.5;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // 현재 위치 원형 마커
+        const curFrom = path[currentStep];
+        const curTo = path[currentStep + 1] || path[currentStep];
+        const markerX = cx(curFrom.col) + (cx(curTo.col) - cx(curFrom.col)) * stepFrac;
+        const markerFromY = curFrom.row === curTo.row ? cy(curFrom.row) + rowH * 0.5 : cy(curFrom.row);
+        const markerToY = curFrom.row === curTo.row ? cy(curTo.row) + rowH * 0.5 : cy(curTo.row);
+        const markerY = markerFromY + (markerToY - markerFromY) * stepFrac;
+
+        ctx.beginPath();
+        ctx.arc(markerX, markerY, isHighlight ? 9 : 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    }
+
+    // 상단 닉네임
+    participants.forEach((p, col) => {
+      const color = COLORS[col % COLORS.length];
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.roundRect(cx(col) - 22, 4, 44, 22, 6);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.max(8, Math.min(11, 88 / n))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const label = p.nickname.length > 4 ? p.nickname.slice(0, 3) + '…' : p.nickname;
+      ctx.fillText(label, cx(col), 15);
+    });
+
+    // 하단 결과 번호
+    for (let col = 0; col < n; col++) {
+      ctx.fillStyle = '#e2e8f0';
+      ctx.beginPath();
+      ctx.arc(cx(col), H - 22, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(col + 1, cx(col), H - 22);
+    }
+  }, [COLORS, buildLadder]);
+
+  // 초기 그리기
+  useEffect(() => {
+    if (!canvasRef.current || participants.length === 0) return;
+    const n = participants.length;
+    const rows = Math.max(5, Math.min(10, n + 3));
+    const rungs = buildLadder(n, rows);
+    const paths = calcPaths(n, rungs, rows);
+    ladderDataRef.current = { n, rows, rungs, paths };
+    draw(canvasRef.current, participants, rungs, rows, null, -1);
+  }, [participants]);
+
+  // 애니메이션 실행
+  useEffect(() => {
+    if (!isDrawing || !ladderDataRef.current || !canvasRef.current) return;
+
+    const { n, rows, rungs, paths } = ladderDataRef.current;
+    const winnerCol = Math.floor(Math.random() * n);
+    const duration = 3500 + n * 200;
+    const startTime = performance.now();
+
+    const animate = (now) => {
+      const elapsed = now - startTime;
+      const rawProg = Math.min(elapsed / duration, 1);
+      // 감속 easing
+      const eased = 1 - Math.pow(1 - rawProg, 3);
+
+      const progresses = Array.from({ length: n }, (_, i) => {
+        // 당첨자는 조금 늦게 도착해서 극적 효과
+        const delay = i === winnerCol ? 0.05 : 0;
+        return Math.min(Math.max(eased - delay, 0) / (1 - delay), 1);
+      });
+
+      draw(canvasRef.current, participants, rungs, rows,
+        { paths, progresses }, winnerCol);
+
+      if (rawProg < 1) {
+        animRef.current = requestAnimationFrame(animate);
+      } else {
+        // 완료
+        onWinner(participants[paths[winnerCol][paths[winnerCol].length - 1].col]);
+      }
+    };
+
+    animRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [isDrawing]);
+
+  return (
+    <div className="w-full flex flex-col items-center space-y-1">
+      <canvas
+        ref={canvasRef}
+        width={380}
+        height={320}
+        className="w-full rounded-xl bg-slate-50 border border-slate-200"
+      />
+      <p className="text-[10px] text-slate-400 font-bold">
+        총 {participants.length}명 · 사다리 시뮬레이션
+      </p>
+    </div>
+  );
+}
+
+
 function RouletteWheel({ participants, canvasRef, angleRef, drawFn }) {
   useEffect(() => {
     if (canvasRef.current && participants.length > 0) {
@@ -730,13 +971,8 @@ export default function App() {
       rouletteAnimRef.current = requestAnimationFrame(animate);
 
     } else {
-      setTimeout(() => {
-        const randomIndex = Math.floor(Math.random() * correctResponses.length);
-        const winner = correctResponses[randomIndex];
-        setDrawWinner(winner);
-        setIsDrawing(false);
-        if (soundEnabled) playSound('success');
-      }, 3000);
+      // 사다리 모드: LadderGame 컴포넌트의 useEffect(isDrawing)가 애니메이션과 당첨자 처리를 담당
+      // setIsDrawing(true)만 하면 됨 — 당첨자는 onWinner 콜백으로 전달됨
     }
   };
 
@@ -2524,24 +2760,18 @@ export default function App() {
                     drawFn={drawRouletteWheel}
                   />
                 ) : (
-                  <div className="space-y-4 w-full text-center">
-                    <div className="flex justify-around items-end h-44 w-full px-4 border-b border-dashed border-slate-200 pb-2">
-                      {correctResponses.slice(0, 10).map((r, i) => (
-                        <div key={i} className="w-2 bg-cyan-400 h-full rounded relative flex flex-col justify-between items-center">
-                          <span className="absolute -top-10 text-[9px] font-black text-slate-700 bg-white px-2 py-0.5 border border-cyan-200 rounded shadow-xs whitespace-nowrap z-10">
-                            {r.nickname}
-                          </span>
-                          <div className="absolute top-8 -left-4 -right-4 h-1 bg-slate-300" />
-                          <div className="absolute top-20 -left-4 -right-4 h-1 bg-slate-300" />
-                          <div className="absolute top-32 -left-4 -right-4 h-1 bg-slate-300" />
-                        </div>
-                      ))}
-                    </div>
-                    <span className="text-[10px] text-slate-400 block font-bold">LADDER GAME ACTIVE ({correctCount}명 배정)</span>
-                  </div>
+                  <LadderGame
+                    participants={correctResponses}
+                    isDrawing={isDrawing && drawMethod === 'ladder'}
+                    onWinner={(winner) => {
+                      setDrawWinner(winner);
+                      setIsDrawing(false);
+                      if (soundEnabled) playSound('success');
+                    }}
+                  />
                 )}
 
-                {isDrawing && (
+                {isDrawing && drawMethod !== 'ladder' && (
                   <div className="absolute inset-0 bg-slate-900/40 text-white flex items-center justify-center font-black animate-pulse text-sm">
                     추첨 진행 중...
                   </div>
