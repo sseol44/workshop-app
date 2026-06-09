@@ -2448,10 +2448,22 @@ export default function App() {
                       <div className="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
 
                         {/* 문제 정보 */}
-                        <div>
+                        <div className="space-y-3">
                           <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
-                          <h5 className="font-extrabold text-slate-800 text-base mt-2">Q{activeQuiz.id}. {activeQuiz.question}</h5>
-                          <p className="text-xs text-slate-400 mt-1">정답: {activeQuiz.answer} / 배점: {activeQuiz.score}점 / 유형: {activeQuiz.type === 'choice' ? '객관식' : activeQuiz.type === 'ox' ? 'OX' : '주관식'}</p>
+                          <h5 className="font-extrabold text-slate-800 text-xl mt-2 leading-snug">
+                            Q{activeQuiz.id}. {activeQuiz.question}
+                          </h5>
+
+                          {/* 정답 공개 후에만 정답 크게 표시 */}
+                          {adminShowAnswer && (
+                            <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl px-5 py-4 flex items-center space-x-3">
+                              <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">정답</p>
+                                <p className="text-2xl font-black text-emerald-700 mt-0.5">{activeQuiz.answer}</p>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {/* 실시간 제출 완료인원 카운터 */}
