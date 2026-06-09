@@ -1892,24 +1892,6 @@ export default function App() {
                             </div>
                           </div>
 
-                          {/* 문제 목록 미리보기 */}
-                          {total > 0 && (
-                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1.5 max-h-[140px] overflow-y-auto">
-                              {quizList.map(q => (
-                                <div key={q.id} className="flex items-center space-x-2 text-xs">
-                                  <span className="bg-slate-200 text-slate-600 text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0">Q{q.id}</span>
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                    q.type === 'choice' ? 'bg-cyan-100 text-cyan-700' :
-                                    q.type === 'ox' ? 'bg-emerald-100 text-emerald-700' :
-                                    'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {q.type === 'choice' ? '객관식' : q.type === 'ox' ? 'OX' : '주관식'}
-                                  </span>
-                                  <span className="text-slate-600 truncate">{q.question.slice(0, 18)}...</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
                           {total === 0 && (
                             <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-center">
                               <p className="text-xs text-slate-400">등록된 퀴즈가 없습니다.</p>
