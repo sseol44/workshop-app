@@ -2934,21 +2934,62 @@ export default function App() {
                   {/* 현재 문제 정답자 현황 */}
                   {(() => {
                     const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-                    const correctList = activeQuiz
-                      ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id) && r.is_correct)
+                    const responsesForQ = activeQuiz
+                      ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id))
                       : [];
-                    return (
-                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 space-y-2">
+                    const correctList = responsesForQ.filter(r => r.is_correct);
+                    const totalCount = responsesForQ.length;
+                    const correctRate = totalCount > 0 ? Math.round((correctList.length / totalCount) * 100) : 0;
+
+                    return !adminShowAnswer ? (
+                      /* 정답 공개 전 — 정답자 숨김 */
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
+                        <p className="text-xs font-bold text-slate-600">현재 문제 정답자 현황</p>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                            <span className="text-slate-400 text-sm">🔒</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-500">정답 공개 전</p>
+                            <p className="text-[10px] text-slate-400">총 {totalCount}명 제출 완료 · 정답자는 공개 후 표시됩니다.</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* 정답 공개 후 — 정답자 수 + 비율 + 닉네임 표시 */
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
                         <p className="text-xs font-bold text-emerald-700">현재 문제 정답자 현황</p>
-                        <p className="text-2xl font-black text-emerald-600">{correctList.length}명</p>
+
+                        {/* 정답자/오답자 카드 */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-white border border-emerald-100 rounded-lg p-2.5 text-center">
+                            <p className="text-[10px] text-emerald-600 font-bold">정답자</p>
+                            <p className="text-xl font-black text-emerald-700">{correctList.length}명</p>
+                            <p className="text-[10px] text-emerald-500 font-bold">{correctRate}%</p>
+                          </div>
+                          <div className="bg-white border border-rose-100 rounded-lg p-2.5 text-center">
+                            <p className="text-[10px] text-rose-600 font-bold">오답자</p>
+                            <p className="text-xl font-black text-rose-700">{totalCount - correctList.length}명</p>
+                            <p className="text-[10px] text-rose-500 font-bold">{totalCount > 0 ? 100 - correctRate : 0}%</p>
+                          </div>
+                        </div>
+
+                        {/* 정답률 바 */}
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden flex">
+                          <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${correctRate}%` }} />
+                          <div className="h-full bg-rose-400 transition-all duration-700" style={{ width: `${totalCount > 0 ? 100 - correctRate : 0}%` }} />
+                        </div>
+
+                        {/* 정답자 닉네임 목록 */}
                         <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                          {correctList.map((r, i) => (
-                            <span key={i} className="bg-white border border-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                              {r.nickname}
-                            </span>
-                          ))}
-                          {correctList.length === 0 && (
-                            <p className="text-xs text-slate-400">아직 정답자가 없습니다.</p>
+                          {correctList.length === 0 ? (
+                            <p className="text-xs text-slate-400">정답자가 없습니다.</p>
+                          ) : (
+                            correctList.map((r, i) => (
+                              <span key={i} className="bg-white border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {r.nickname}
+                              </span>
+                            ))
                           )}
                         </div>
                       </div>
