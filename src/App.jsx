@@ -2715,12 +2715,12 @@ export default function App() {
                     return (
                       <div className="bg-slate-50 border border-slate-100 p-5 rounded-xl space-y-4">
 
-                        {/* 문제 정보 + 카운트다운 */}
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
-                            {/* 카운트다운 타이머 */}
-                            {quizActive && (
+                        {/* 문제 정보 + 카운트다운 — 송출 개시 후에만 표시 */}
+                        {quizActive ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="bg-cyan-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">현재 전송 중</span>
+                              {/* 카운트다운 타이머 */}
                               <div className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl font-black text-sm transition-all ${
                                 adminTimer <= 3
                                   ? 'bg-rose-500 text-white animate-pulse'
@@ -2731,14 +2731,12 @@ export default function App() {
                                 <span className="text-[10px] font-bold opacity-80">제한시간</span>
                                 <span className="text-xl font-black tabular-nums">{adminTimer}</span>
                               </div>
-                            )}
-                          </div>
-                          <h5 className="font-extrabold text-slate-800 text-xl mt-2 leading-snug">
-                            Q{activeQuiz.id}. {activeQuiz.question}
-                          </h5>
+                            </div>
+                            <h5 className="font-extrabold text-slate-800 text-xl mt-2 leading-snug">
+                              Q{activeQuiz.id}. {activeQuiz.question}
+                            </h5>
 
-                          {/* 카운트다운 게이지 바 */}
-                          {quizActive && (
+                            {/* 카운트다운 게이지 바 */}
                             <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-1000 ${
@@ -2748,19 +2746,32 @@ export default function App() {
                                 style={{ width: `${(adminTimer / 10) * 100}%` }}
                               />
                             </div>
-                          )}
 
-                          {/* 정답 공개 후에만 정답 크게 표시 */}
-                          {adminShowAnswer && (
-                            <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl px-5 py-4 flex items-center space-x-3">
-                              <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
-                              <div>
-                                <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">정답</p>
-                                <p className="text-2xl font-black text-emerald-700 mt-0.5">{activeQuiz.answer}</p>
+                            {/* 정답 공개 후에만 정답 크게 표시 */}
+                            {adminShowAnswer && (
+                              <div className="bg-emerald-50 border-2 border-emerald-400 rounded-xl px-5 py-4 flex items-center space-x-3">
+                                <CheckCircle className="w-6 h-6 text-emerald-500 shrink-0" />
+                                <div>
+                                  <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">정답</p>
+                                  <p className="text-2xl font-black text-emerald-700 mt-0.5">{activeQuiz.answer}</p>
+                                </div>
                               </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* 송출 개시 전 — 문제 숨김 */
+                          <div className="flex items-center space-x-3 py-2">
+                            <div className="w-10 h-10 bg-slate-200 rounded-xl flex items-center justify-center shrink-0">
+                              <HelpCircle className="w-5 h-5 text-slate-400" />
                             </div>
-                          )}
-                        </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-500">문제 대기 중</p>
+                              <p className="text-[10px] text-slate-400">
+                                아래 <span className="font-bold text-cyan-600">송출 개시</span> 버튼을 클릭하면 참여자 화면에 문제가 공개됩니다.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
                         {/* 접속 중인 참여자 수 카드 */}
                         <div className="grid grid-cols-2 gap-3">
