@@ -1135,13 +1135,17 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
   // --- 퀴즈 명예의 전당 Top 5 산출 ---
   const calculateLeaderboard = () => {
     const scores = {};
-    
+
     quizResponses.forEach(res => {
       if (!scores[res.nickname]) {
         scores[res.nickname] = { nickname: res.nickname, totalScore: 0, totalTime: 0, correctCount: 0 };
       }
       if (res.is_correct) {
-        scores[res.nickname].totalScore += res.score_gained;
+        // 정답 문제의 기본 배점(quiz.score)을 합산
+        // score_gained는 시간 보정값이므로 배점 기준으로 재계산
+        const quiz = quizList.find(q => Number(q.id) === Number(res.quiz_id));
+        const baseScore = quiz ? quiz.score : (res.score_gained || 0);
+        scores[res.nickname].totalScore += baseScore;
         scores[res.nickname].correctCount += 1;
       }
       scores[res.nickname].totalTime += res.time_taken;
@@ -1150,7 +1154,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
     return Object.values(scores)
       .sort((a, b) => {
         if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-        return a.totalTime - b.totalTime; 
+        return a.totalTime - b.totalTime;
       })
       .slice(0, 5);
   };
