@@ -2832,23 +2832,114 @@ export default function App() {
                               <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                               <span>정답 공개 후 최종 결과</span>
                             </p>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
-                                <p className="text-[11px] text-emerald-600 font-bold mb-1">정답자</p>
-                                <p className="text-xl font-black text-emerald-700">{correctCount}명</p>
-                                <p className="text-[10px] text-emerald-500 font-bold">{correctRate}%</p>
-                              </div>
-                              <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-center">
-                                <p className="text-[11px] text-rose-600 font-bold mb-1">오답자</p>
-                                <p className="text-xl font-black text-rose-700">{incorrectCount}명</p>
-                                <p className="text-[10px] text-rose-500 font-bold">{incorrectRate}%</p>
-                              </div>
-                            </div>
-                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
-                              <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${correctRate}%` }} />
-                              <div className="h-full bg-rose-400 transition-all duration-700" style={{ width: `${incorrectRate}%` }} />
-                            </div>
-                            <p className="text-[10px] text-slate-400 text-center">총 {totalResponses}명 제출 · 정답률 {correctRate}%</p>
+
+                            {/* 객관식: 보기별 응답 수/비율 */}
+                            {activeQuiz.type === 'choice' && (() => {
+                              const COLORS = ['bg-cyan-500','bg-emerald-500','bg-amber-500','bg-violet-500'];
+                              const LIGHT = ['bg-cyan-50 border-cyan-100 text-cyan-700','bg-emerald-50 border-emerald-100 text-emerald-700','bg-amber-50 border-amber-100 text-amber-700','bg-violet-50 border-violet-100 text-violet-700'];
+                              return (
+                                <div className="space-y-2">
+                                  {(activeQuiz.options || []).map((opt, i) => {
+                                    const cnt = responsesForQ.filter(r => r.submitted_answer === opt).length;
+                                    const pct = totalResponses > 0 ? Math.round(cnt / totalResponses * 100) : 0;
+                                    const isAnswer = opt === activeQuiz.answer;
+                                    return (
+                                      <div key={i} className={`border rounded-xl p-2.5 ${isAnswer ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <div className="flex items-center space-x-1.5">
+                                            {isAnswer && <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />}
+                                            <span className={`text-xs font-bold ${isAnswer ? 'text-emerald-700' : 'text-slate-600'}`}>{opt}</span>
+                                          </div>
+                                          <div className="flex items-center space-x-1.5">
+                                            <span className={`text-xs font-black ${isAnswer ? 'text-emerald-700' : 'text-slate-600'}`}>{cnt}명</span>
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isAnswer ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>{pct}%</span>
+                                          </div>
+                                        </div>
+                                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                          <div className={`h-full rounded-full transition-all duration-700 ${isAnswer ? 'bg-emerald-500' : COLORS[i % COLORS.length]}`} style={{ width: `${pct}%` }} />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  <p className="text-[10px] text-slate-400 text-center pt-1">총 {totalResponses}명 제출 · 정답률 {correctRate}%</p>
+                                </div>
+                              );
+                            })()}
+
+                            {/* OX: O/X 응답 수/비율 */}
+                            {activeQuiz.type === 'ox' && (() => {
+                              const oCnt = responsesForQ.filter(r => r.submitted_answer === 'O').length;
+                              const xCnt = responsesForQ.filter(r => r.submitted_answer === 'X').length;
+                              const oPct = totalResponses > 0 ? Math.round(oCnt / totalResponses * 100) : 0;
+                              const xPct = totalResponses > 0 ? Math.round(xCnt / totalResponses * 100) : 0;
+                              return (
+                                <div className="space-y-2">
+                                  {[{label:'O', cnt:oCnt, pct:oPct, isAnswer: activeQuiz.answer==='O', color:'bg-emerald-500', light:'bg-emerald-50 border-emerald-300 text-emerald-700'},
+                                    {label:'X', cnt:xCnt, pct:xPct, isAnswer: activeQuiz.answer==='X', color:'bg-rose-500', light:'bg-rose-50 border-rose-300 text-rose-700'}
+                                  ].map(item => (
+                                    <div key={item.label} className={`border rounded-xl p-3 ${item.isAnswer ? item.light : 'bg-slate-50 border-slate-200'}`}>
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <div className="flex items-center space-x-1.5">
+                                          {item.isAnswer && <CheckCircle className="w-3.5 h-3.5 text-current shrink-0" />}
+                                          <span className="text-xl font-black">{item.label}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-sm font-black">{item.cnt}명</span>
+                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${item.isAnswer ? 'bg-white/60' : 'bg-slate-200 text-slate-500'}`}>{item.pct}%</span>
+                                        </div>
+                                      </div>
+                                      <div className="w-full bg-white/60 h-2 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full transition-all duration-700 ${item.color}`} style={{ width: `${item.pct}%` }} />
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <p className="text-[10px] text-slate-400 text-center pt-1">총 {totalResponses}명 제출 · 정답률 {correctRate}%</p>
+                                </div>
+                              );
+                            })()}
+
+                            {/* 주관식: 상위 3개 응답 */}
+                            {activeQuiz.type === 'short' && (() => {
+                              const answerMap = {};
+                              responsesForQ.forEach(r => {
+                                const a = (r.submitted_answer || '').trim();
+                                if (a) answerMap[a] = (answerMap[a] || 0) + 1;
+                              });
+                              const sorted = Object.entries(answerMap)
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 3);
+                              return (
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-bold text-slate-400">상위 응답 TOP 3</p>
+                                  {sorted.length === 0 && <p className="text-xs text-slate-400">제출된 응답이 없습니다.</p>}
+                                  {sorted.map(([ans, cnt], i) => {
+                                    const pct = totalResponses > 0 ? Math.round(cnt / totalResponses * 100) : 0;
+                                    const isAnswer = ans.trim().toLowerCase() === activeQuiz.answer.trim().toLowerCase();
+                                    const RANK_COLOR = ['text-amber-500','text-slate-400','text-amber-700'];
+                                    const RANK_LABEL = ['🥇','🥈','🥉'];
+                                    return (
+                                      <div key={i} className={`border rounded-xl p-2.5 ${isAnswer ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                                        <div className="flex items-center justify-between mb-1">
+                                          <div className="flex items-center space-x-1.5">
+                                            <span className="text-sm">{RANK_LABEL[i]}</span>
+                                            {isAnswer && <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />}
+                                            <span className={`text-xs font-bold ${isAnswer ? 'text-emerald-700' : 'text-slate-600'}`}>"{ans}"</span>
+                                          </div>
+                                          <div className="flex items-center space-x-1.5">
+                                            <span className={`text-xs font-black ${isAnswer ? 'text-emerald-700' : 'text-slate-600'}`}>{cnt}명</span>
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${isAnswer ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>{pct}%</span>
+                                          </div>
+                                        </div>
+                                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                          <div className={`h-full rounded-full transition-all duration-700 ${isAnswer ? 'bg-emerald-500' : 'bg-slate-400'}`} style={{ width: `${pct}%` }} />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                  <p className="text-[10px] text-slate-400 text-center pt-1">총 {totalResponses}명 제출 · 정답률 {correctRate}%</p>
+                                </div>
+                              );
+                            })()}
                           </div>
                         )}
 
