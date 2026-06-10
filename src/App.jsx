@@ -515,12 +515,9 @@ export default function App() {
         setAdminShowAnswer(status.show_answer);
         setQuizSessionActive(status.session_active === true);
         setQuizActive(status.quiz_active === true);
-        // 초기 로딩 시 타이머 복원 (송출 중이었다면 남은 시간 계산)
+        // 초기 로딩 시 타이머 복원
         if (status.quiz_active && status.timer_started_at) {
-          const elapsed = Math.floor((Date.now() - new Date(status.timer_started_at).getTime()) / 1000);
-          const remaining = Math.max(10 - elapsed, 0);
-          setQuizTimer(remaining);
-          setAdminTimer(remaining);
+          setTimerStartedAt(status.timer_started_at);
         }
       }
     };
@@ -567,15 +564,16 @@ export default function App() {
         setQuizSessionActive(next.session_active === true);
         setQuizActive(next.quiz_active === true);
 
-        // quiz_active가 새로 켜지면 (송출 개시) — 서버 타임스탬프 기준으로 타이머 동기화
+        // quiz_active가 새로 켜지면 (송출 개시) — timerStartedAt 저장
         if (!prev.quiz_active && next.quiz_active && next.timer_started_at) {
-          const elapsed = Math.floor((Date.now() - new Date(next.timer_started_at).getTime()) / 1000);
-          const remaining = Math.max(10 - elapsed, 0);
-          setQuizTimer(remaining);
-          setAdminTimer(remaining);
+          setTimerStartedAt(next.timer_started_at);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
           setQuizStartTime(Date.now());
+        }
+        // quiz_active 꺼지면 timerStartedAt 초기화
+        if (prev.quiz_active && !next.quiz_active) {
+          setTimerStartedAt(null);
         }
 
         // 문제가 바뀐 경우에만 응답 상태 초기화
@@ -600,49 +598,48 @@ export default function App() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // 10초 카운트다운 타이머
-  // 제출 여부와 관계없이 quizActive인 동안 끝까지 진행
-  // 타이머 종료 시 미제출자만 시간 초과 처리
-  useEffect(() => {
-    let interval;
-    if (currentView === 'part2-quiz' && quizActive && quizTimer > 0) {
-      interval = setInterval(() => {
-        setQuizTimer((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            // 아직 제출 안 한 참가자만 시간 초과 처리
-            if (!hasSubmittedAnswer) {
-              setHasSubmittedAnswer(true);
-              submitQuizAnswer('시간 초과', 0);
-            }
-            return 0;
-          }
-          if (soundEnabled) playSound('tick');
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [currentView, quizTimer, soundEnabled, quizActive]);
+  // === 타이머 동기화 ===
+  // setInterval 드리프트 없이 timer_started_at 기준으로 매초 남은 시간을 직접 계산
+  // 관리자/참가자 모두 동일한 서버 타임스탬프를 기준으로 하므로 완벽히 일치함
+  const [timerStartedAt, setTimerStartedAt] = useState(null); // DB의 timer_started_at 저장
 
-  // 관리자 화면 카운트다운 타이머 (quizActive일 때 참가자와 동일하게 작동)
   useEffect(() => {
-    if (!quizActive) {
+    if (!quizActive || !timerStartedAt) {
+      setQuizTimer(10);
       setAdminTimer(10);
       return;
     }
-    if (adminTimer <= 0) return;
+
+    const calcRemaining = () => {
+      const elapsed = (Date.now() - new Date(timerStartedAt).getTime()) / 1000;
+      return Math.max(10 - elapsed, 0);
+    };
+
+    // 즉시 한 번 계산
+    const initial = calcRemaining();
+    setQuizTimer(Math.ceil(initial));
+    setAdminTimer(Math.ceil(initial));
+
     const interval = setInterval(() => {
-      setAdminTimer(prev => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
+      const remaining = calcRemaining();
+      const ceiled = Math.ceil(remaining);
+
+      setAdminTimer(ceiled);
+
+      if (currentView === 'part2-quiz') {
+        setQuizTimer(ceiled);
+        if (ceiled <= 0 && !hasSubmittedAnswer) {
+          setHasSubmittedAnswer(true);
+          submitQuizAnswer('시간 초과', 0);
         }
-        return prev - 1;
-      });
-    }, 1000);
+        if (ceiled > 0 && soundEnabled) playSound('tick');
+      }
+
+      if (remaining <= 0) clearInterval(interval);
+    }, 250); // 250ms마다 체크해서 1초 단위 표시 오차를 최소화
+
     return () => clearInterval(interval);
-  }, [quizActive, adminTimer]);
+  }, [quizActive, timerStartedAt, currentView]);
 
   // 화면 전환 로직
   // - 세션 시작(session_active=true): 대기 → 수료평가 준비 (part2-waiting 유지, quizSessionActive만 변경)
@@ -709,6 +706,7 @@ export default function App() {
     setCurrentAdminQuizId(quizId);
     setQuizActive(true);
     setAdminShowAnswer(false);
+    setTimerStartedAt(now);
     setAdminTimer(10);
   };
 
@@ -720,6 +718,7 @@ export default function App() {
       .eq('id', 1);
     setQuizActive(false);
     setAdminShowAnswer(false);
+    setTimerStartedAt(null);
     setAdminTimer(10);
   };
 
