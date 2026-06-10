@@ -834,10 +834,12 @@ export default function App() {
     if (!stats) return;
 
     setIsAiAnalyzing(true);
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""
-    
-    const systemPrompt = `당신은 건설산업 구매·계약 분야에 20년 이상의 경험을 보유한 수석 조직문화 전문 컨설턴트입니다. 건설사 구매계약실의 특수성(대형 협력사 계약관리, 공정거래 준수, 원가절감 압력, 수직적 보고 문화, 현장·본사 이원화 등)을 깊이 이해하고 있으며, 조직심리학·리더십 이론·구매관리(SCM) 실무를 통합적으로 적용할 수 있습니다.
-제공된 정량 데이터를 근거로, 표면적 수치 이면의 구조적 원인을 진단하고 실행 가능한 처방을 제시하는 전문가 수준의 보고서를 작성하세요. 모든 분석은 Markdown 형식으로, 항목 간 논리적 인과관계가 명확히 드러나도록 서술하세요.`;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
+
+    const systemPrompt = `당신은 건설산업 구매·계약 분야 20년 경력의 수석 조직문화 컨설턴트이자 인사관리 전문가입니다.
+건설사 구매계약실의 특수성(협력사 계약·원가절감 압력·공정거래 준수·수직적 보고문화)을 깊이 이해합니다.
+반드시 아래 JSON 형식으로만 응답하세요. JSON 외 어떤 텍스트도 출력하지 마세요.
+각 항목은 핵심만 담은 1~2문장으로 작성하고, 상투적 표현과 근거 없는 추측은 금지합니다.`;
 
     const mbtiGroupAnalysis = (() => {
       const groups = {
@@ -853,49 +855,43 @@ export default function App() {
     })();
 
     const userQuery = `
-    [2026 구매계약실 상반기 워크샵 — 조직진단 설문 원시 데이터]
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    ▶ 총 응답자: ${stats.totalParticipants}명
-    ▶ MBTI 개별 분포: ${JSON.stringify(stats.mbtiCounts)}
-    ▶ MBTI 그룹 요약: ${mbtiGroupAnalysis}
-    ▶ 6대 부문 만족도 평점 (5점 리커트): ${JSON.stringify(stats.satisfactionScores)}
-    ▶ 6대 부문 밸런스 성향 (A선택수 vs B선택수): ${JSON.stringify(stats.balanceStats)}
-    ▶ 자유 VOC 원문: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[2026 구매계약실 워크샵 — 조직진단 설문 데이터]
+총 응답자: ${stats.totalParticipants}명
+만족도 평점(5점): ${JSON.stringify(stats.satisfactionScores)}
+밸런스 성향(A선택수 vs B선택수): ${JSON.stringify(stats.balanceStats)}
+MBTI 개별: ${JSON.stringify(stats.mbtiCounts)}
+MBTI 그룹: ${mbtiGroupAnalysis}
+VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
-    위 데이터를 바탕으로 아래 5개 섹션을 순서대로, 건설산업 구매계약 조직의 맥락에 맞게 전문가 수준으로 작성하세요.
-    각 섹션은 반드시 【】 헤더로 시작하고, 근거 없는 추측이나 상투적 표현은 일절 금지합니다.
+위 데이터를 분석하여 아래 JSON 형식으로만 응답하세요:
 
-    ---
-
-    【섹션 1. 부문별 만족도 정밀 진단
-    - 6개 부문(소통/업무/성장/자율/효율/문화) 각각에 대해 아래 형식으로 분석하세요.
-    - 평점 수치 제시 → 건설 구매조직 맥락에서의 의미 해석 → 해당 점수가 낮거나 높은 구조적 원인 추론 → 방치 시 예상 리스크
-    - 6개 부문 중 가장 긴급한 개선 부문 1순위와 현상 유지 강점 부문 1순위를 명시하세요.
-
-    【섹션 2. 6대 밸런스 성향 지형도 해석
-    - 각 부문의 A/B 선택 비율을 수치로 제시하고, 그 의미를 해석하세요.
-    - 건설 구매계약 업무(협상·계약·원가검토·협력사 관계 등)와 연계하여 해당 성향이 실무에 미치는 영향을 분석하세요.
-    - 성향 쏠림이 뚜렷한 부문(70% 이상 편향)이 있다면 특별히 강조하고, 그로 인한 조직 리스크를 짚어주세요.
-
-    【섹션 3. MBTI 구성 분석 및 조직 역동성 진단
-    - NT/NF/SJ/SP 4그룹의 비율과 현재 구매계약실 조직 운영에 미치는 영향을 분석하세요.
-    - 지배적 유형이 강한 경우 나타날 수 있는 집단사고(Groupthink) 또는 갈등 패턴을 진단하세요.
-    - 구매계약 업무(규정 준수·협상·창의적 문제 해결·관계관리)별로 현재 MBTI 구성의 강점과 취약 역량을 매핑하세요.
-
-    【섹션 4. 3개 데이터 통합 종합 진단】
-    - 만족도 점수 패턴 + 밸런스 성향 + MBTI 구성 + VOC를 교차 분석하여 단일 데이터로는 보이지 않는 구조적 인사이트를 도출하세요.
-    - "왜 이 조직은 지금 이런 상태인가"에 대한 인과 스토리를 3~4문장으로 서술하세요.
-    - VOC 키워드와 정량 데이터 간의 일치/불일치 지점을 지적하세요.
-
-    【섹션 5. 2026 구매계약실 최우선 개선 실행과제 (Action Items)
-    - 우선순위 순으로 4~5개 과제를 제시하되, 각 과제는 아래 형식을 엄수하세요.
-      ◆ 과제명: (간결한 명칭)
-      ◆ 배경·필요성: (왜 지금 이 과제인가 — 데이터 근거 명시)
-      ◆ 구체적 실행방안: (누가, 무엇을, 어떻게 — 3단계 이상)
-      ◆ 기대효과: (정량적 목표 포함 가능 시 포함)
-      ◆ 추진 시 유의사항: (조직 저항 또는 실행 리스크)
-`;
+{
+  "satisfaction": {
+    "strength": "만족도 강점 부문과 핵심 이유 1~2문장",
+    "weakness": "만족도 취약 부문과 구체적 리스크 1~2문장",
+    "recommend": "즉시 실행 가능한 개선 권장사항 1~2문장",
+    "caution": "방치 시 조직 리스크 경고 1문장"
+  },
+  "balance": {
+    "strength": "긍정적 성향 쏠림과 실무 강점 1~2문장",
+    "weakness": "70% 이상 편향 차원과 그로 인한 조직 약점 1~2문장",
+    "recommend": "성향 균형을 위한 실행 방안 1~2문장",
+    "caution": "쏠림 현상 지속 시 리스크 1문장"
+  },
+  "mbti": {
+    "strength": "현재 MBTI 구성의 업무 강점 1~2문장",
+    "weakness": "구성상 취약한 역량 영역 1~2문장",
+    "recommend": "MBTI 다양성 활용 방안 1~2문장",
+    "caution": "집단사고 또는 갈등 패턴 경고 1문장"
+  },
+  "integrated": {
+    "insight": "3개 데이터 교차분석으로 발견한 핵심 구조적 인사이트 2~3문장",
+    "story": "왜 이 조직이 현재 상태인지 인과 서술 2문장",
+    "topAction1": "최우선 개선과제 명칭과 실행방안 핵심 1~2문장",
+    "topAction2": "2순위 개선과제 명칭과 실행방안 핵심 1~2문장",
+    "topAction3": "3순위 개선과제 명칭과 실행방안 핵심 1~2문장"
+  }
+}`;
 
     const makeRequest = async (retries = 5, delay = 1000) => {
       try {
@@ -924,15 +920,20 @@ export default function App() {
 
     try {
       const resultText = await makeRequest();
+      // JSON 파싱 시도 (```json ... ``` 블록 제거 후)
+      const clean = resultText.replace(/```json|```/g, '').trim();
+      let parsed = null;
+      try { parsed = JSON.parse(clean); } catch { parsed = null; }
       const reportData = {
         generatedAt: new Date().toLocaleDateString(),
-        content: resultText
+        content: resultText,
+        parsed,
       };
       setAiReport(reportData);
-      triggerAlert("AI 분석 완료", "Gemini 가 조직개선 피드백을 완전하게 종합 분석하였습니다!");
+      triggerAlert("AI 분석 완료", "Gemini가 조직개선 피드백을 종합 분석하였습니다!");
     } catch (error) {
       console.error(error);
-      triggerAlert("분석 실패", "서버 환경 오류 또는 네트워크 상태가 원활하지 않아 분석을 실패했습니다.");
+      triggerAlert("분석 실패", `오류: ${error.message}`);
     } finally {
       setIsAiAnalyzing(false);
     }
@@ -1823,21 +1824,112 @@ export default function App() {
 
                   {/* Gemini AI 분석 보고서 */}
                   <div className="bg-gradient-to-b from-cyan-50/70 to-emerald-50/40 border border-emerald-100 rounded-2xl p-6 shadow-sm">
-                    <div className="flex items-center space-x-2 text-emerald-600 font-extrabold text-sm mb-4">
-                      <Sparkles className="w-5 h-5 animate-spin" />
-                      <span>Gemini 2.5 실시간 AI 리포트</span>
-                    </div>
-                    
-                    {isAiAnalyzing ? (
-                      <div className="space-y-4 py-8 text-center text-slate-400">
-                        <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500" />
-                        <p className="text-sm font-semibold">Gemini가 최신 조직평가 기법을 기반으로<br/>구매계약실 데이터셋을 분석하는 중입니다...</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2 text-emerald-600 font-extrabold text-sm">
+                        <Sparkles className="w-5 h-5" />
+                        <span>Gemini 2.5 실시간 AI 리포트</span>
                       </div>
-                    ) : aiReport ? (
-                      <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed text-xs pr-2 space-y-3">
+                      {aiReport && (
+                        <span className="text-[10px] text-slate-400 font-bold">분석일: {aiReport.generatedAt}</span>
+                      )}
+                    </div>
+
+                    {isAiAnalyzing ? (
+                      <div className="space-y-4 py-10 text-center text-slate-400">
+                        <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500" />
+                        <p className="text-sm font-semibold">Gemini가 구매계약실 데이터를 분석 중입니다...</p>
+                      </div>
+
+                    ) : aiReport?.parsed ? (() => {
+                      const r = aiReport.parsed;
+                      const CARDS = [
+                        {
+                          key: 'satisfaction', title: '만족도 종합분석', icon: '📊',
+                          color: 'border-blue-200 bg-blue-50/60', titleColor: 'text-blue-700',
+                          data: r.satisfaction,
+                        },
+                        {
+                          key: 'balance', title: '밸런스 지형도 종합분석', icon: '⚖️',
+                          color: 'border-emerald-200 bg-emerald-50/60', titleColor: 'text-emerald-700',
+                          data: r.balance,
+                        },
+                        {
+                          key: 'mbti', title: 'MBTI 분포 종합분석', icon: '🧠',
+                          color: 'border-violet-200 bg-violet-50/60', titleColor: 'text-violet-700',
+                          data: r.mbti,
+                        },
+                      ];
+                      const BADGE = [
+                        { label: '강점', icon: '✅', bg: 'bg-emerald-100 text-emerald-700', key: 'strength' },
+                        { label: '약점', icon: '⚠️', bg: 'bg-amber-100 text-amber-700', key: 'weakness' },
+                        { label: '권장', icon: '💡', bg: 'bg-blue-100 text-blue-700', key: 'recommend' },
+                        { label: '유의', icon: '🔴', bg: 'bg-rose-100 text-rose-700', key: 'caution' },
+                      ];
+                      return (
+                        <div className="space-y-4">
+                          {/* 3개 카테고리 카드 */}
+                          {CARDS.map(card => (
+                            <div key={card.key} className={`border rounded-2xl p-4 ${card.color}`}>
+                              <h5 className={`text-sm font-extrabold mb-3 flex items-center space-x-1.5 ${card.titleColor}`}>
+                                <span>{card.icon}</span>
+                                <span>{card.title}</span>
+                              </h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {BADGE.map(b => (
+                                  card.data?.[b.key] && (
+                                    <div key={b.key} className="bg-white/80 rounded-xl p-2.5 space-y-1">
+                                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full inline-block ${b.bg}`}>
+                                        {b.icon} {b.label}
+                                      </span>
+                                      <p className="text-xs text-slate-700 leading-relaxed">{card.data[b.key]}</p>
+                                    </div>
+                                  )
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* 통합 분석 카드 */}
+                          {r.integrated && (
+                            <div className="border border-slate-300 bg-slate-800 rounded-2xl p-5 space-y-3">
+                              <h5 className="text-sm font-extrabold text-white flex items-center space-x-1.5">
+                                <span>🔗</span>
+                                <span>통합 종합분석</span>
+                              </h5>
+                              {r.integrated.insight && (
+                                <div className="bg-white/10 rounded-xl p-3">
+                                  <p className="text-[10px] font-bold text-slate-300 mb-1">🔍 핵심 인사이트</p>
+                                  <p className="text-xs text-slate-100 leading-relaxed">{r.integrated.insight}</p>
+                                </div>
+                              )}
+                              {r.integrated.story && (
+                                <div className="bg-white/10 rounded-xl p-3">
+                                  <p className="text-[10px] font-bold text-slate-300 mb-1">📖 조직 현황 진단</p>
+                                  <p className="text-xs text-slate-100 leading-relaxed">{r.integrated.story}</p>
+                                </div>
+                              )}
+                              {/* Action Items */}
+                              <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-slate-300">🎯 최우선 개선과제</p>
+                                {['topAction1','topAction2','topAction3'].map((k, i) => (
+                                  r.integrated[k] && (
+                                    <div key={k} className="bg-white/10 rounded-xl p-3 flex items-start space-x-2">
+                                      <span className="text-amber-400 font-black text-xs shrink-0">{i+1}순위</span>
+                                      <p className="text-xs text-slate-100 leading-relaxed">{r.integrated[k]}</p>
+                                    </div>
+                                  )
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })() : aiReport ? (
+                      /* JSON 파싱 실패 시 폴백 — 기존 텍스트 렌더링 */
+                      <div className="text-xs text-slate-600 leading-relaxed space-y-1 pr-2">
                         <div className="text-[10px] text-slate-400 font-bold mb-2">분석일자: {aiReport.generatedAt}</div>
                         {aiReport.content.split('\n').map((line, idx) => {
-                          if (line.startsWith('【') || line.startsWith('###') || line.startsWith('**') || line.startsWith('1.') || line.startsWith('2.') || line.startsWith('3.')) {
+                          if (line.startsWith('【') || line.startsWith('###') || line.startsWith('**')) {
                             return <h5 key={idx} className="font-extrabold text-slate-800 mt-4 mb-2 text-sm">{line.replace(/[\*#【】]/g, '')}</h5>;
                           }
                           return <p key={idx} className="mb-1 text-slate-600">{line.replace(/\*/g, '')}</p>;
