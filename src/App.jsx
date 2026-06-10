@@ -600,16 +600,21 @@ export default function App() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // 10초 카운트다운 타이머 (세션이 활성화되어 있고 문제가 공개된 경우에만 작동)
+  // 10초 카운트다운 타이머
+  // 제출 여부와 관계없이 quizActive인 동안 끝까지 진행
+  // 타이머 종료 시 미제출자만 시간 초과 처리
   useEffect(() => {
     let interval;
-    if (currentView === 'part2-quiz' && quizActive && quizTimer > 0 && !hasSubmittedAnswer) {
+    if (currentView === 'part2-quiz' && quizActive && quizTimer > 0) {
       interval = setInterval(() => {
         setQuizTimer((prev) => {
           if (prev <= 1) {
             clearInterval(interval);
-            setHasSubmittedAnswer(true); 
-            submitQuizAnswer('시간 초과', 0);
+            // 아직 제출 안 한 참가자만 시간 초과 처리
+            if (!hasSubmittedAnswer) {
+              setHasSubmittedAnswer(true);
+              submitQuizAnswer('시간 초과', 0);
+            }
             return 0;
           }
           if (soundEnabled) playSound('tick');
@@ -618,7 +623,7 @@ export default function App() {
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [currentView, quizTimer, hasSubmittedAnswer, soundEnabled, quizActive]);
+  }, [currentView, quizTimer, soundEnabled, quizActive]);
 
   // 관리자 화면 카운트다운 타이머 (quizActive일 때 참가자와 동일하게 작동)
   useEffect(() => {
@@ -2131,12 +2136,24 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     <CheckCircle className="w-10 h-10 text-cyan-500 mx-auto mb-2" />
                     <p className="font-bold text-slate-700">답안 제출을 완료했습니다!</p>
                     <p className="text-xs text-slate-400 mt-1">관리자가 정답과 분포를 오픈할 때까지 잠시 대기해주세요.</p>
-                    {selectedAnswer && (
+                    {selectedAnswer && selectedAnswer !== '시간 초과' && (
                       <div className="mt-3 inline-block bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2">
                         <p className="text-xs text-slate-500 font-semibold">제출한 답안</p>
                         <p className="text-base font-black text-cyan-700 mt-0.5">{selectedAnswer}</p>
                       </div>
                     )}
+                    {selectedAnswer === '시간 초과' && (
+                      <div className="mt-3 inline-block bg-rose-50 border border-rose-200 rounded-lg px-4 py-2">
+                        <p className="text-xs text-rose-500 font-bold">⏰ 시간 초과 — 미제출 처리됩니다.</p>
+                      </div>
+                    )}
+                  </div>
+                ) : quizTimer === 0 ? (
+                  /* 타이머 종료 — 미제출 상태에서 시간 초과 */
+                  <div className="text-center py-6 bg-rose-50 rounded-xl border border-rose-200">
+                    <div className="text-3xl mb-2">⏰</div>
+                    <p className="font-bold text-rose-700">시간이 종료되었습니다!</p>
+                    <p className="text-xs text-rose-500 mt-1">이번 문제는 미제출로 처리됩니다.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -2147,7 +2164,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                           {currentQuiz.options.map((opt, i) => (
                             <button
                               key={i}
-                              onClick={() => setSelectedAnswer(opt)}   // ← 선택만 함
+                              onClick={() => setSelectedAnswer(opt)}
                               className={`border rounded-xl p-4 text-left font-semibold text-sm transition-all flex items-center space-x-3
                                 ${selectedAnswer === opt
                                   ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-200'
@@ -2184,7 +2201,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                           {["O", "X"].map((opt) => (
                             <button
                               key={opt}
-                              onClick={() => setSelectedAnswer(opt)}   // ← 선택만 함
+                              onClick={() => setSelectedAnswer(opt)}
                               className={`p-8 rounded-xl border text-center font-black text-3xl transition-all
                                 ${selectedAnswer === opt
                                   ? opt === 'O'
@@ -2194,27 +2211,27 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                                     ? 'bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-600'
                                     : 'bg-slate-50 hover:bg-rose-50 hover:border-rose-300 text-rose-600'
                                 }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    if (!selectedAnswer) {
-                      triggerAlert("선택 필요", "O 또는 X를 먼저 선택해주세요.");
-                      return;
-                    }
-                    submitQuizAnswer(selectedAnswer, quizTimer);
-                  }}
-                  className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all"
-                >
-                  응답 제출
-                </button>
-              </div>
-            )}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!selectedAnswer) {
+                              triggerAlert("선택 필요", "O 또는 X를 먼저 선택해주세요.");
+                              return;
+                            }
+                            submitQuizAnswer(selectedAnswer, quizTimer);
+                          }}
+                          className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all"
+                        >
+                          응답 제출
+                        </button>
+                      </div>
+                    )}
 
-                    {/* 3) 주관식 유형 — 기존과 동일 */}
+                    {/* 3) 주관식 유형 */}
                     {currentQuiz.type === 'short' && (
                       <div className="space-y-3">
                         <input
