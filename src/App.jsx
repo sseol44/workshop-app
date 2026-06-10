@@ -30,43 +30,55 @@ const SATISFACTION_QUESTIONS = [
   { id: 10, category: "자율", text: "형식적인 절차보다 실제 성과와 실질적 문제 해결에 집중하여 일한다." }
 ];
 
-// 조직문화 밸런스 게임 35문항 (수평 vs 수직, 효율 vs 절차, 자율 vs 규율 등)
+// 조직문화 밸런스 게임 18문항 (6개 차원 × 3문항, 최적화 압축 버전)
 const BALANCE_QUESTIONS = [
-  { id: 1, category: "소통", text: "이상적인 리더의 의사소통 스타일은?", optionA: "명확한 탑다운 지시형", optionB: "쌍방향 합의 도출형" },
-  { id: 2, category: "업무", text: "피하고 싶은 동료 유형은?", optionA: "일은 잘하지만 까칠하고 이기적인 동료", optionB: "착하고 협조적이나 일머리가 부족한 동료" },
-  { id: 3, category: "성장", text: "성장을 위한 더 가치 있는 기회는?", optionA: "높은 연봉 상승을 동반한 격무 부서", optionB: "워라밸이 완벽히 보장되는 무난한 부서" },
-  { id: 4, category: "자율", text: "일의 시작과 끝을 관리하는 방식 중 선호하는 것은?", optionA: "정형화된 보고 라인과 촘촘한 가이드라인", optionB: "목표 설정 후 세부 실행 과정은 전적으로 자율" },
-  { id: 5, category: "효율", text: "부서 회의 진행 방식으로 더 나은 것은?", optionA: "모두가 의견을 한마디씩 내는 난상토론(30분)", optionB: "리더가 핵심 사항을 결정해 속전속결 전달(10분)" },
-  { id: 6, category: "문화", text: "워크샵 프로그램으로 더 선호하는 것은?", optionA: "친밀도 형성을 위한 액티비티 및 친목 회식", optionB: "업무 인사이트 위주의 가벼운 세미나 후 빠른 퇴근" },
-  { id: 7, category: "소통", text: "어려운 문제 발생 시 해결하는 경향은?", optionA: "즉시 리더에게 보고하고 가이드를 따름", optionB: "동료들과 치열하게 논의 후 최종 안을 들고 보고" },
-  { id: 8, category: "업무", text: "업무 배정 시 더 선호하는 균형은?", optionA: "나의 기존 전문 영역 내에서만 안전하게 일하기", optionB: "새롭고 도전적인 미션을 도맡아 존재감 키우기" },
-  { id: 9, category: "성장", text: "미래 역량 개발을 위해 필요한 교육은?", optionA: "실무에 즉시 적용 가능한 스킬셋 트레이닝", optionB: "장기적 커리어와 리더십 관점의 인문/경영 소양 교육" },
-  { id: 10, category: "자율", text: "유연근무제 이용 시 가장 중시해야 할 점은?", optionA: "팀 간 협업 시간(Core-Time)의 엄격한 준수", optionB: "개인 라이프사이클에 맞춘 자율적인 시간 배치" },
-  { id: 11, category: "효율", text: "업무 지시를 받을 때 더 나은 상황은?", optionA: "구체적 프로세스가 적혀있는 표준 매뉴얼 제공", optionB: "대략적인 방향성만 공유 후 즉흥적 해결책 모색" },
-  { id: 12, category: "문화", text: "우리 계약실의 경조사 및 사내 행사 챙기기 수준은?", optionA: "무조건 전원 참석하여 끈끈하게 챙기는 가족형", optionB: "각자 부담 없는 선에서 자유롭게 축하하는 실속형" },
-  { id: 13, category: "소통", text: "피드백을 들을 때 더 편안한 스타일은?", optionA: "핵심만 직설적으로 말해주는 팩트 폭격 피드백", optionB: "감정을 배려하며 부드럽게 돌려 말해주는 완곡 피드백" },
-  { id: 14, category: "업무", text: "인수인계 시 더 끔찍한 상황은?", optionA: "문서화가 전혀 안 되어 구두로 물어보며 해결", optionB: "수천 페이지 문서를 읽어야 하지만 아무도 안 도와줌" },
-  { id: 15, category: "성장", text: "평가 및 보상 체계 중 더 공정하다고 느끼는 것은?", optionA: "성과에 따른 확실한 차등 보상(개인주의적 경쟁)", optionB: "기본 기여도를 인정하는 안정 지향형 분배(팀워크)" },
-  { id: 16, category: "자율", text: "휴가 상신 시 가장 편안한 상태는?", optionA: "아무 사유 없이 그냥 날짜만 정해 자동 승인", optionB: "간단한 부재중 커버 플랜을 작성하여 리더에게 승인" },
-  { id: 17, category: "효율", text: "협력사 계약 협상 시 중요시하는 기조는?", optionA: "엄격한 법률 및 구매 규정 준수를 최우선으로 검토", optionB: "상황에 따라 유연하게 윈윈 방안을 도출하는 융통성" },
-  { id: 18, category: "문화", text: "바람직한 사무실 소음도는?", optionA: "업무에 고도로 몰입할 수 있는 정적 상태", optionB: "가벼운 스몰토크와 웃음이 오가는 자유로운 분위기" },
-  { id: 19, category: "소통", text: "팀 메신저나 슬랙 소통 시 바람직한 태도는?", optionA: "신속한 실시간 답장과 캐주얼한 리액션", optionB: "잘 정리된 내용을 시간차를 두고 진중하게 전달" },
-  { id: 20, category: "업무", text: "일할 때 더 힘 빠지는 상황은?", optionA: "의미를 찾기 힘든 형식적 서류 작업의 무한 반복", optionB: "열심히 기획했는데 리더의 한 마디에 엎어지는 경우" },
-  { id: 21, category: "성장", text: "사내 공모나 보직 순환에 대한 나의 생각은?", optionA: "한 분야에서 롱런하여 독보적 스페셜리스트 되기", optionB: "다양한 부서를 거치며 폭넓은 제너럴리스트 되기" },
-  { id: 22, category: "자율", text: "복장 규정에 대한 개인적인 기준은?", optionA: "어느 정도 격식은 지키는 비즈니스 캐주얼 고수", optionB: "타인에게 혐오감을 주지 않는 선에서 완전 자율" },
-  { id: 23, category: "효율", text: "보고서 작성 시 투자해야 하는 리소스 배분은?", optionA: "보기 좋은 떡이 먹기도 좋다 (PPT 레이아웃 및 디자인 강화)", optionB: "내용만 명확하면 된다 (원페이지 요약본 위주)" },
-  { id: 24, category: "문화", text: "동료의 생일이나 기념일 축하는?", optionA: "부서원 전체가 노래를 불러주며 다 함께 케이크 파티", optionB: "기프티콘 하나로 깔끔하게 마음 전달" },
-  { id: 25, category: "소통", text: "아이디어 브레인스토밍 회의 시 나의 성향은?", optionA: "정리 안 된 생각이라도 자유롭게 툭툭 던지기", optionB: "확실한 논리와 팩트가 정립된 후 신중하게 발언" },
-  { id: 26, category: "업무", text: "일이 몰릴 때 마인드셋은?", optionA: "조금 무리해서라도 오늘 내로 끝내야 속이 시원함", optionB: "시간이 지나면 과부하가 걸리니 정시 퇴근 후 내일 처리" },
-  { id: 27, category: "성장", text: "회사 밖에서의 자기계발에 대한 태도는?", optionA: "퇴근 후에도 관련 기술 서적이나 자격증 공부에 몰입", optionB: "퇴근 후에는 업무 생각을 완전 분리하고 철저히 휴식" },
-  { id: 28, category: "자율", text: "자리 배치에 대해 더 선호하는 것은?", optionA: "지정된 내 자리에서 나만의 데스크테리어 가꾸기", optionB: "매일 원하는 자리에 자유롭게 앉는 자율 좌석제" },
-  { id: 29, category: "효율", text: "결재선 지정 시 프로세스 효율성은?", optionA: "위험 방지를 위해 다수의 관련 부서를 검토선에 지정", optionB: "속도전을 위해 결재선을 단 한 두 단계로 대폭 축소" },
-  { id: 30, category: "문화", text: "회식 메뉴 및 일정 선택 시?", optionA: "참석자 전원의 투표와 취향을 반영한 핫플레이스", optionB: "접근성 좋고 무난하며 빠르게 파하는 클래식 식당" },
-  { id: 31, category: "소통", text: "후배 사원이 업무 실수를 했을 때 나의 태도는?", optionA: "즉시 지적하고 올바른 대안을 강력하게 훈수", optionB: "실수의 원인을 스스로 찾아내도록 질문하며 대기" },
-  { id: 32, category: "업무", text: "업무가 잘 안 풀릴 때 스트레스 해소는?", optionA: "동료들과 티타임을 하며 수다로 털어내기", optionB: "혼자 산책을 하거나 음악을 들으며 생각 정리하기" },
-  { id: 33, category: "성장", text: "사내 멘토링 프로그램에 대한 기대치는?", optionA: "정서적 유대와 든든한 사내 네트워크 확장", optionB: "업무 꿀팁과 실질적인 노하우 지식 습득" },
-  { id: 34, category: "자율", text: "팀 공동 목표와 나의 개인 목표가 다소 충돌할 때?", optionA: "팀의 미션 달성을 위해 개인 의견을 양보하고 헌신", optionB: "나의 성향 및 방향성에 맞지 않음을 적극적으로 설득" },
-  { id: 35, category: "문화", text: "주말이나 퇴근 후 부서원의 연락?", optionA: "중요한 공적인 사안이면 예의 바르게 즉각 대응", optionB: "내일 아침 출근 시 확인하는 것이 원칙 (읽씹 후 아침 대응)" }
+  // ── 소통 차원 (3문항) ──────────────────────────────────────────────
+  { id: 1,  category: "소통", text: "이상적인 리더의 의사소통 스타일은?",
+    optionA: "명확한 탑다운 지시형", optionB: "쌍방향 합의 도출형" },
+  { id: 2,  category: "소통", text: "피드백을 들을 때 더 편안한 스타일은?",
+    optionA: "핵심만 직설적으로 말해주는 팩트 폭격 피드백", optionB: "감정을 배려하며 부드럽게 돌려 말해주는 완곡 피드백" },
+  { id: 3,  category: "소통", text: "후배 사원이 업무 실수를 했을 때 나의 태도는?",
+    optionA: "즉시 지적하고 올바른 대안을 강력하게 훈수", optionB: "실수의 원인을 스스로 찾아내도록 질문하며 대기" },
+
+  // ── 업무 차원 (3문항) ──────────────────────────────────────────────
+  { id: 4,  category: "업무", text: "피하고 싶은 동료 유형은?",
+    optionA: "일은 잘하지만 까칠하고 이기적인 동료", optionB: "착하고 협조적이나 일머리가 부족한 동료" },
+  { id: 5,  category: "업무", text: "업무 배정 시 더 선호하는 균형은?",
+    optionA: "나의 기존 전문 영역 내에서만 안전하게 일하기", optionB: "새롭고 도전적인 미션을 도맡아 존재감 키우기" },
+  { id: 6,  category: "업무", text: "일이 몰릴 때 마인드셋은?",
+    optionA: "조금 무리해서라도 오늘 내로 끝내야 속이 시원함", optionB: "시간이 지나면 과부하가 걸리니 정시 퇴근 후 내일 처리" },
+
+  // ── 성장 차원 (3문항) ──────────────────────────────────────────────
+  { id: 7,  category: "성장", text: "성장을 위한 더 가치 있는 기회는?",
+    optionA: "높은 연봉 상승을 동반한 격무 부서", optionB: "워라밸이 완벽히 보장되는 무난한 부서" },
+  { id: 8,  category: "성장", text: "평가 및 보상 체계 중 더 공정하다고 느끼는 것은?",
+    optionA: "성과에 따른 확실한 차등 보상(개인주의적 경쟁)", optionB: "기본 기여도를 인정하는 안정 지향형 분배(팀워크)" },
+  { id: 9,  category: "성장", text: "사내 공모나 보직 순환에 대한 나의 생각은?",
+    optionA: "한 분야에서 롱런하여 독보적 스페셜리스트 되기", optionB: "다양한 부서를 거치며 폭넓은 제너럴리스트 되기" },
+
+  // ── 자율 차원 (3문항) ──────────────────────────────────────────────
+  { id: 10, category: "자율", text: "일의 시작과 끝을 관리하는 방식 중 선호하는 것은?",
+    optionA: "정형화된 보고 라인과 촘촘한 가이드라인", optionB: "목표 설정 후 세부 실행 과정은 전적으로 자율" },
+  { id: 11, category: "자율", text: "유연근무제 이용 시 가장 중시해야 할 점은?",
+    optionA: "팀 간 협업 시간(Core-Time)의 엄격한 준수", optionB: "개인 라이프사이클에 맞춘 자율적인 시간 배치" },
+  { id: 12, category: "자율", text: "팀 공동 목표와 나의 개인 목표가 다소 충돌할 때?",
+    optionA: "팀의 미션 달성을 위해 개인 의견을 양보하고 헌신", optionB: "나의 성향 및 방향성에 맞지 않음을 적극적으로 설득" },
+
+  // ── 효율 차원 (3문항) ──────────────────────────────────────────────
+  { id: 13, category: "효율", text: "부서 회의 진행 방식으로 더 나은 것은?",
+    optionA: "모두가 의견을 한마디씩 내는 난상토론(30분)", optionB: "리더가 핵심 사항을 결정해 속전속결 전달(10분)" },
+  { id: 14, category: "효율", text: "협력사 계약 협상 시 중요시하는 기조는?",
+    optionA: "엄격한 법률 및 구매 규정 준수를 최우선으로 검토", optionB: "상황에 따라 유연하게 윈윈 방안을 도출하는 융통성" },
+  { id: 15, category: "효율", text: "결재선 지정 시 프로세스 효율성은?",
+    optionA: "위험 방지를 위해 다수의 관련 부서를 검토선에 지정", optionB: "속도전을 위해 결재선을 단 한 두 단계로 대폭 축소" },
+
+  // ── 문화 차원 (3문항) ──────────────────────────────────────────────
+  { id: 16, category: "문화", text: "워크샵 프로그램으로 더 선호하는 것은?",
+    optionA: "친밀도 형성을 위한 액티비티 및 친목 회식", optionB: "업무 인사이트 위주의 가벼운 세미나 후 빠른 퇴근" },
+  { id: 17, category: "문화", text: "우리 계약실의 경조사 및 사내 행사 챙기기 수준은?",
+    optionA: "무조건 전원 참석하여 끈끈하게 챙기는 가족형", optionB: "각자 부담 없는 선에서 자유롭게 축하하는 실속형" },
+  { id: 18, category: "문화", text: "주말이나 퇴근 후 부서원의 연락?",
+    optionA: "중요한 공적인 사안이면 예의 바르게 즉각 대응", optionB: "내일 아침 출근 시 확인하는 것이 원칙 (읽씹 후 아침 대응)" },
 ];
 
 // 초기 퀴즈 데이터 세트
@@ -1360,7 +1372,7 @@ export default function App() {
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">PART 1. 조직개선 설문조사</h3>
                   <p className="text-slate-500 text-sm leading-relaxed">
-                    조직문화 건강도, 밸런스 게임 성향, 진솔한 VOC를 접수합니다. 여러분의 데이터가 실시간 AI 분석의 훌륭한 밑거름이 됩니다.
+                    조직문화 건강도, 밸런스 게임 성향(6개 차원 × 3문항), 진솔한 VOC를 접수합니다. 여러분의 데이터가 실시간 AI 분석의 훌륭한 밑거름이 됩니다.
                   </p>
                 </div>
                 <div className="mt-8 flex items-center text-sm font-bold text-emerald-600">
@@ -1477,12 +1489,12 @@ export default function App() {
             {/* 진행도 헤더 */}
             <div className="flex items-center justify-between text-xs text-slate-400 font-bold mb-3">
               <span>PROGRESS</span>
-              <span>{currentSurveyStep + 1} / 46 ({(Math.round((currentSurveyStep + 1)/46 * 100))}% 완료)</span>
+              <span>{currentSurveyStep + 1} / 29 ({(Math.round((currentSurveyStep + 1)/29 * 100))}% 완료)</span>
             </div>
             <div className="w-full h-2.5 bg-slate-100 rounded-full mb-8 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400 transition-all duration-300"
-                style={{ width: `${(currentSurveyStep + 1) / 46 * 100}%` }}
+                style={{ width: `${(currentSurveyStep + 1) / 29 * 100}%` }}
               />
             </div>
 
@@ -1532,8 +1544,8 @@ export default function App() {
                 </div>
               )}
 
-              {/* 2. 조직문화 밸런스 게임 (10~44번 슬라이드) */}
-              {currentSurveyStep >= 10 && currentSurveyStep < 45 && (() => {
+              {/* 2. 조직문화 밸런스 게임 (10~27번 슬라이드) */}
+              {currentSurveyStep >= 10 && currentSurveyStep < 28 && (() => {
                 const balanceIndex = currentSurveyStep - 10;
                 const currentBalanceQ = BALANCE_QUESTIONS[balanceIndex];
                 const selectedVal = tempAnswers[`bal_${currentBalanceQ.id}`];
@@ -1578,8 +1590,8 @@ export default function App() {
                 );
               })()}
 
-              {/* 3. VOC 및 최종 접수 (45번 슬라이드) */}
-              {currentSurveyStep === 45 && (
+              {/* 3. VOC 및 최종 접수 (28번 슬라이드) */}
+              {currentSurveyStep === 28 && (
                 <div className="py-6 space-y-6">
                   <div className="text-center">
                     <span className="bg-purple-50 text-purple-600 text-xs px-3 py-1.5 rounded-full font-bold">VOC 서술형 (선택)</span>
@@ -1707,6 +1719,14 @@ export default function App() {
                         "효율": { A: "절차·정확형", B: "속도·실용형" },
                         "문화": { A: "결속·공동체형", B: "개인·실속형" },
                       };
+                      const BALANCE_DESC = {
+                        "소통": "리더 스타일 · 피드백 방식 · 후배 지도",
+                        "업무": "동료 선호 · 전문vs도전 · 업무 완수",
+                        "성장": "격무vs워라밸 · 보상 방식 · 커리어 경로",
+                        "자율": "보고 방식 · 유연근무 · 팀vs개인 목표",
+                        "효율": "회의 방식 · 계약 협상 · 결재 프로세스",
+                        "문화": "워크샵 선호 · 경조사 참여 · 업무외 연락",
+                      };
                       return (
                         <div className="space-y-5">
                           {Object.entries(stats.balanceStats).map(([cat, val]) => {
@@ -1723,7 +1743,12 @@ export default function App() {
                                     <span className="text-emerald-500 font-black">({rateA}%)</span>
                                     {dominant === 'A' && <span className="text-[9px] bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-full font-bold">우세</span>}
                                   </div>
-                                  <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
+                                  <div className="text-center">
+                                    <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-[10px]">{cat} 차원</span>
+                                    {BALANCE_DESC[cat] && (
+                                      <p className="text-[9px] text-slate-400 mt-0.5">{BALANCE_DESC[cat]}</p>
+                                    )}
+                                  </div>
                                   <div className="flex items-center space-x-1.5">
                                     {dominant === 'B' && <span className="text-[9px] bg-cyan-100 text-cyan-600 px-1.5 py-0.5 rounded-full font-bold">우세</span>}
                                     <span className="text-cyan-500 font-black">({rateB}%)</span>
