@@ -1094,7 +1094,14 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
   const startDrawing = () => {
     const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-    const correctResponses = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz.id) && r.is_correct);
+    const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz.id));
+    const deduped = Object.values(
+      allForQ.reduce((acc, r) => {
+        if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) acc[r.nickname] = r;
+        return acc;
+      }, {})
+    ).filter(r => r.submitted_answer !== '시간 초과');
+    const correctResponses = deduped.filter(r => r.is_correct === true);
 
     if (correctResponses.length === 0) {
       triggerAlert("추첨 불가능", "해당 문제의 정답자가 존재하지 않아 추첨할 수 없습니다.");
@@ -2876,18 +2883,18 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
                     // 닉네임 기준 중복 제거 (같은 사람이 여러 번 제출한 경우 최신 응답만 사용)
                     const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz.id));
+                    // 닉네임 기준 중복 제거 (최신 id 기준) + 시간초과 미제출 제외
                     const deduped = Object.values(
                       allForQ.reduce((acc, r) => {
-                        // 같은 닉네임이면 id가 더 큰(최신) 응답으로 덮어씀
-                        if (!acc[r.nickname] || r.id > acc[r.nickname].id) {
+                        if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) {
                           acc[r.nickname] = r;
                         }
                         return acc;
                       }, {})
-                    );
+                    ).filter(r => r.submitted_answer !== '시간 초과');
                     const responsesForQ = deduped;
                     const totalResponses = responsesForQ.length;
-                    const correctCount = responsesForQ.filter(r => r.is_correct).length;
+                    const correctCount = responsesForQ.filter(r => r.is_correct === true).length;
                     const incorrectCount = totalResponses - correctCount;
                     const correctRate = totalResponses > 0 ? Math.round((correctCount / totalResponses) * 100) : 0;
                     const incorrectRate = totalResponses > 0 ? 100 - correctRate : 0;
@@ -3216,10 +3223,17 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                   {/* 현재 문제 정답자 현황 */}
                   {(() => {
                     const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-                    const responsesForQ = activeQuiz
+                    const allForQ = activeQuiz
                       ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id))
                       : [];
-                    const correctList = responsesForQ.filter(r => r.is_correct);
+                    // 닉네임 중복 제거 + 시간초과 제외
+                    const responsesForQ = Object.values(
+                      allForQ.reduce((acc, r) => {
+                        if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) acc[r.nickname] = r;
+                        return acc;
+                      }, {})
+                    ).filter(r => r.submitted_answer !== '시간 초과');
+                    const correctList = responsesForQ.filter(r => r.is_correct === true);
                     const totalCount = responsesForQ.length;
                     const correctRate = totalCount > 0 ? Math.round((correctList.length / totalCount) * 100) : 0;
 
@@ -3336,8 +3350,14 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
       {/* REAL-TIME RAFFLE POPUP MODAL (ADMIN ONLY) */}
       {isRaffleModalOpen && (() => {
         const currentQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-        const responsesForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz?.id));
-        const correctResponses = responsesForQ.filter(r => r.is_correct);
+        const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz?.id));
+        const responsesForQ = Object.values(
+          allForQ.reduce((acc, r) => {
+            if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) acc[r.nickname] = r;
+            return acc;
+          }, {})
+        ).filter(r => r.submitted_answer !== '시간 초과');
+        const correctResponses = responsesForQ.filter(r => r.is_correct === true);
         const correctCount = correctResponses.length;
         const incorrectCount = responsesForQ.length - correctCount;
         const totalCount = responsesForQ.length;
