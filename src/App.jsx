@@ -541,7 +541,26 @@ export default function App() {
           score_gained: Number(row.score_gained || 0),
           time_taken: Number(row.time_taken || 0),
         };
-        setQuizResponses(prev => [...prev, normalized]);
+        setQuizResponses(prev => {
+          // 같은 quiz_id + nickname 중복 제거 후 추가
+          const filtered = prev.filter(r =>
+            !(Number(r.quiz_id) === Number(row.quiz_id) && r.nickname === row.nickname)
+          );
+          return [...filtered, normalized];
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_responses' }, (payload) => {
+        const row = payload.new;
+        const normalized = {
+          ...row,
+          quiz_id: Number(row.quiz_id),
+          is_correct: row.is_correct === true || row.is_correct === 'true',
+          score_gained: Number(row.score_gained || 0),
+          time_taken: Number(row.time_taken || 0),
+        };
+        setQuizResponses(prev =>
+          prev.map(r => r.id === row.id ? normalized : r)
+        );
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quiz_participants' }, (payload) => {
         setWaitingParticipants(prev => {
@@ -959,14 +978,14 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
       playSound(isCorrect ? 'success' : 'fail');
     }
 
-    const { data, error } = await supabase.from('quiz_responses').insert([{
+    const { data, error } = await supabase.from('quiz_responses').upsert([{
       quiz_id: Number(quiz.id),
       nickname: quizParticipant,
       submitted_answer: String(answerText),
       is_correct: isCorrect,
       score_gained: scoreGained,
       time_taken: timeTaken,
-    }]).select();
+    }], { onConflict: 'quiz_id,nickname' }).select();
 
     if (error) {
       console.error('quiz_responses INSERT 오류:', error);
@@ -975,19 +994,22 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
       return;
     }
 
-    // Realtime이 느릴 경우 직접 state에도 반영
+    // Realtime이 느릴 경우 직접 state에도 반영 (중복 닉네임은 교체)
     if (data && data.length > 0) {
       const row = data[0];
+      const normalized = {
+        ...row,
+        quiz_id: Number(row.quiz_id),
+        is_correct: row.is_correct === true || row.is_correct === 'true',
+        score_gained: Number(row.score_gained || 0),
+        time_taken: Number(row.time_taken || 0),
+      };
       setQuizResponses(prev => {
-        const already = prev.find(r => r.id === row.id);
-        if (already) return prev;
-        return [...prev, {
-          ...row,
-          quiz_id: Number(row.quiz_id),
-          is_correct: row.is_correct === true || row.is_correct === 'true',
-          score_gained: Number(row.score_gained || 0),
-          time_taken: Number(row.time_taken || 0),
-        }];
+        // 같은 quiz_id + nickname이 이미 있으면 교체, 없으면 추가
+        const filtered = prev.filter(r =>
+          !(Number(r.quiz_id) === Number(row.quiz_id) && r.nickname === row.nickname)
+        );
+        return [...filtered, normalized];
       });
     }
   };
@@ -1140,13 +1162,23 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
   const calculateLeaderboard = () => {
     const scores = {};
 
-    quizResponses.forEach(res => {
+    // 문제별 닉네임 중복 제거 (최신 응답만 사용)
+    const quizIds = [...new Set(quizResponses.map(r => r.quiz_id))];
+    const dedupedAll = quizIds.flatMap(qid => {
+      const forQ = quizResponses.filter(r => Number(r.quiz_id) === Number(qid));
+      return Object.values(
+        forQ.reduce((acc, r) => {
+          if (!acc[r.nickname] || r.id > acc[r.nickname].id) acc[r.nickname] = r;
+          return acc;
+        }, {})
+      );
+    });
+
+    dedupedAll.forEach(res => {
       if (!scores[res.nickname]) {
         scores[res.nickname] = { nickname: res.nickname, totalScore: 0, totalTime: 0, correctCount: 0 };
       }
       if (res.is_correct) {
-        // 정답 문제의 기본 배점(quiz.score)을 합산
-        // score_gained는 시간 보정값이므로 배점 기준으로 재계산
         const quiz = quizList.find(q => Number(q.id) === Number(res.quiz_id));
         const baseScore = quiz ? quiz.score : (res.score_gained || 0);
         scores[res.nickname].totalScore += baseScore;
@@ -2842,7 +2874,18 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
                     if (!activeQuiz) return <p className="text-slate-400 text-xs">등록된 퀴즈가 없습니다.</p>;
 
-                    const responsesForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz.id));
+                    // 닉네임 기준 중복 제거 (같은 사람이 여러 번 제출한 경우 최신 응답만 사용)
+                    const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz.id));
+                    const deduped = Object.values(
+                      allForQ.reduce((acc, r) => {
+                        // 같은 닉네임이면 id가 더 큰(최신) 응답으로 덮어씀
+                        if (!acc[r.nickname] || r.id > acc[r.nickname].id) {
+                          acc[r.nickname] = r;
+                        }
+                        return acc;
+                      }, {})
+                    );
+                    const responsesForQ = deduped;
                     const totalResponses = responsesForQ.length;
                     const correctCount = responsesForQ.filter(r => r.is_correct).length;
                     const incorrectCount = totalResponses - correctCount;
