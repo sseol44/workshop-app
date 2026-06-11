@@ -439,6 +439,7 @@ export default function App() {
   const adminTimerRef = useRef(null);
   const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState('');
+  const [myAnswerHistory, setMyAnswerHistory] = useState([]); // 내 응답 누적 기록
   const [quizStartTime, setQuizStartTime] = useState(null);
   
   // 사운드 상태
@@ -713,9 +714,7 @@ export default function App() {
     setQuizSessionActive(false);
     setQuizActive(false);
     setAdminShowAnswer(false);
-  };
-
-  // 문제 송출 개시 (quiz_active=true → 참여자 화면에 문제 공개)
+    setMyAnswerHistory([]);
   const broadcastQuiz = async (quizId) => {
     const now = new Date().toISOString();
     await supabase
@@ -973,6 +972,23 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
     const isCorrect = String(answerText).trim().toLowerCase() === String(quiz.answer).trim().toLowerCase();
     const timeTaken = 10 - timeLeft;
     const scoreGained = isCorrect ? Math.max(quiz.score - timeTaken, 1) : 0;
+
+    // 내 응답 기록 저장
+    if (answerText !== '시간 초과') {
+      setMyAnswerHistory(prev => {
+        const existing = prev.find(h => h.quizId === quiz.id);
+        if (existing) return prev; // 이미 기록된 문제는 중복 저장 안 함
+        return [...prev, {
+          quizId: quiz.id,
+          quizNum: quizList.findIndex(q => q.id === quiz.id) + 1,
+          answer: String(answerText),
+          correctAnswer: quiz.answer,
+          isCorrect,
+          score: isCorrect ? quiz.score : 0,
+          timeTaken,
+        }];
+      });
+    }
 
     if (soundEnabled) {
       playSound(isCorrect ? 'success' : 'fail');
@@ -2338,6 +2354,61 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                 <p>💡 <b>[멀티플레이어 데모 안내]</b> 이 페이지를 새로운 브라우저 탭(창)으로 하나 더 열고, <br/> 
                 새 창에서 <b>[관리자 로그인 {"->"} 어드민 대시보드]</b>에 접속하면 실시간으로 문제를 주도 및 전환하고 추첨을 즐기실 수 있습니다!</p>
               </div>
+
+              {/* 내 응답 요약 — 1문제 이상 풀었을 때만 표시 */}
+              {myAnswerHistory.length > 0 && (
+                <div className="space-y-3">
+                  {/* 총점 / 풀이 시간 요약 */}
+                  <div className="bg-gradient-to-r from-cyan-50 to-emerald-50 border border-cyan-200 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-slate-500 mb-3">📊 내 현재 성적 요약</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-white rounded-xl p-3 text-center border border-cyan-100">
+                        <p className="text-[10px] text-slate-400 font-bold">총 득점</p>
+                        <p className="text-xl font-black text-cyan-600 mt-0.5">
+                          {myAnswerHistory.reduce((s, h) => s + h.score, 0)}
+                          <span className="text-xs font-bold text-slate-400">점</span>
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-xl p-3 text-center border border-emerald-100">
+                        <p className="text-[10px] text-slate-400 font-bold">정답 수</p>
+                        <p className="text-xl font-black text-emerald-600 mt-0.5">
+                          {myAnswerHistory.filter(h => h.isCorrect).length}
+                          <span className="text-xs font-bold text-slate-400">/{myAnswerHistory.length}</span>
+                        </p>
+                      </div>
+                      <div className="bg-white rounded-xl p-3 text-center border border-slate-100">
+                        <p className="text-[10px] text-slate-400 font-bold">총 풀이</p>
+                        <p className="text-xl font-black text-slate-600 mt-0.5">
+                          {myAnswerHistory.reduce((s, h) => s + h.timeTaken, 0)}
+                          <span className="text-xs font-bold text-slate-400">초</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 문제별 정답/오답 기록 */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4">
+                    <p className="text-xs font-bold text-slate-500 mb-3">📝 문제별 응답 내역</p>
+                    <div className="flex flex-wrap gap-2">
+                      {myAnswerHistory.map((h) => (
+                        <div key={h.quizId} className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-bold ${
+                          h.isCorrect
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            : 'bg-rose-50 border-rose-200 text-rose-700'
+                        }`}>
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                            h.isCorrect ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                          }`}>
+                            {h.quizNum}
+                          </span>
+                          <span>{h.isCorrect ? '⭕' : '❌'}</span>
+                          <span className="text-[10px] font-semibold opacity-70">{h.timeTaken}초</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
             </div>
           );
