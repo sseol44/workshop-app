@@ -704,6 +704,22 @@ export default function App() {
     setAdminShowAnswer(showAnswer);
     setQuizSessionActive(sessionActive);
     setQuizActive(quizActiveVal);
+
+    // 정답 공개/숨김 처리 시 최신 응답 데이터를 다시 조회하여 정답자 현황 동기화
+    const { data: responses } = await supabase
+      .from('quiz_responses')
+      .select('*')
+      .order('timestamp', { ascending: true });
+    if (responses) {
+      const normalized = responses.map(row => ({
+        ...row,
+        quiz_id: Number(row.quiz_id),
+        is_correct: row.is_correct === true || row.is_correct === 'true',
+        score_gained: Number(row.score_gained || 0),
+        time_taken: Number(row.time_taken || 0),
+      }));
+      setQuizResponses(normalized);
+    }
   };
 
   // 수료평가 세션 시작 (참여자: 수료평가 대기 → 수료평가 준비)
