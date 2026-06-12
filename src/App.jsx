@@ -673,7 +673,24 @@ export default function App() {
     return () => clearInterval(interval);
   }, [quizActive, timerStartedAt, currentView]);
 
-  // 화면 전환 로직
+  // 정답 공개 시 DB에서 최신 응답 데이터 강제 재로딩
+  useEffect(() => {
+    if (!adminShowAnswer) return;
+    const reload = async () => {
+      const { data } = await supabase.from('quiz_responses').select('*').order('id', { ascending: true });
+      if (data) {
+        const normalized = data.map(row => ({
+          ...row,
+          quiz_id: Number(row.quiz_id),
+          is_correct: row.is_correct === true || row.is_correct === 'true' || row.is_correct === 1,
+          score_gained: Number(row.score_gained || 0),
+          time_taken: Number(row.time_taken || 0),
+        }));
+        setQuizResponses(normalized);
+      }
+    };
+    reload();
+  }, [adminShowAnswer]);
   // - 세션 시작(session_active=true): 대기 → 수료평가 준비 (part2-waiting 유지, quizSessionActive만 변경)
   // - 송출 개시(quiz_active=true): 수료평가 준비 → 퀴즈 화면
   // - 세션 중단(session_active=false): 퀴즈/준비 → 수료평가 대기
@@ -3311,14 +3328,22 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     const allForQ = activeQuiz
                       ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id))
                       : [];
-                    const responsesForQ = Object.values(
+                    // 닉네임 중복 제거: 같은 닉네임 중 id가 가장 큰(최신) 응답만 사용
+                    const deduped = Object.values(
                       allForQ.reduce((acc, r) => {
-                        acc[r.nickname] = r;
+                        const key = r.nickname;
+                        if (!acc[key] || Number(r.id) > Number(acc[key].id)) {
+                          acc[key] = r;
+                        }
                         return acc;
                       }, {})
                     ).filter(r => r.submitted_answer !== '시간 초과');
-                    const correctList = responsesForQ.filter(r => r.is_correct === true);
-                    const totalCount = responsesForQ.length;
+
+                    // is_correct 명시적 boolean 변환
+                    const correctList = deduped.filter(r =>
+                      r.is_correct === true || r.is_correct === 'true' || r.is_correct === 1
+                    );
+                    const totalCount = deduped.length;
                     const correctRate = totalCount > 0 ? Math.round((correctList.length / totalCount) * 100) : 0;
 
                     return !adminShowAnswer ? (
@@ -3338,7 +3363,28 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     ) : (
                       /* 정답 공개 후 — 정답자 수 + 비율 + 닉네임 표시 */
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
-                        <p className="text-xs font-bold text-emerald-700">현재 문제 정답자 현황</p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-emerald-700">현재 문제 정답자 현황</p>
+                          <button
+                            onClick={async () => {
+                              const { data } = await supabase.from('quiz_responses').select('*').order('id', { ascending: true });
+                              if (data) {
+                                const normalized = data.map(row => ({
+                                  ...row,
+                                  quiz_id: Number(row.quiz_id),
+                                  is_correct: row.is_correct === true || row.is_correct === 'true' || row.is_correct === 1,
+                                  score_gained: Number(row.score_gained || 0),
+                                  time_taken: Number(row.time_taken || 0),
+                                }));
+                                setQuizResponses(normalized);
+                              }
+                            }}
+                            className="text-[10px] font-bold text-emerald-600 bg-white border border-emerald-200 px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition-all flex items-center space-x-1"
+                          >
+                            <RefreshCw className="w-2.5 h-2.5" />
+                            <span>새로고침</span>
+                          </button>
+                        </div>
 
                         {/* 정답자/오답자 카드 */}
                         <div className="grid grid-cols-2 gap-2">
