@@ -559,9 +559,21 @@ export default function App() {
           score_gained: Number(row.score_gained || 0),
           time_taken: Number(row.time_taken || 0),
         };
-        setQuizResponses(prev =>
-          prev.map(r => r.id === row.id ? normalized : r)
-        );
+        setQuizResponses(prev => {
+          const exists = prev.some(r =>
+            (r.id && r.id === normalized.id) ||
+            (Number(r.quiz_id) === Number(normalized.quiz_id) && r.nickname === normalized.nickname)
+          );
+          if (exists) {
+            return prev.map(r =>
+              ((r.id && r.id === normalized.id) ||
+               (Number(r.quiz_id) === Number(normalized.quiz_id) && r.nickname === normalized.nickname))
+                ? normalized
+                : r
+            );
+          }
+          return [...prev, normalized];
+        });
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'quiz_participants' }, (payload) => {
         setWaitingParticipants(prev => {
@@ -1112,7 +1124,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
     const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz.id));
     const deduped = Object.values(
       allForQ.reduce((acc, r) => {
-        if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) acc[r.nickname] = r;
+        acc[r.nickname] = r;
         return acc;
       }, {})
     ).filter(r => r.submitted_answer !== '시간 초과');
@@ -2943,12 +2955,9 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
                     // 닉네임 기준 중복 제거 (같은 사람이 여러 번 제출한 경우 최신 응답만 사용)
                     const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz.id));
-                    // 닉네임 기준 중복 제거 (최신 id 기준) + 시간초과 미제출 제외
                     const deduped = Object.values(
                       allForQ.reduce((acc, r) => {
-                        if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) {
-                          acc[r.nickname] = r;
-                        }
+                        acc[r.nickname] = r;
                         return acc;
                       }, {})
                     ).filter(r => r.submitted_answer !== '시간 초과');
@@ -3286,10 +3295,9 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     const allForQ = activeQuiz
                       ? quizResponses.filter(r => Number(r.quiz_id) === Number(activeQuiz?.id))
                       : [];
-                    // 닉네임 중복 제거 + 시간초과 제외
                     const responsesForQ = Object.values(
                       allForQ.reduce((acc, r) => {
-                        if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) acc[r.nickname] = r;
+                        acc[r.nickname] = r;
                         return acc;
                       }, {})
                     ).filter(r => r.submitted_answer !== '시간 초과');
@@ -3413,7 +3421,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
         const allForQ = quizResponses.filter(r => Number(r.quiz_id) === Number(currentQuiz?.id));
         const responsesForQ = Object.values(
           allForQ.reduce((acc, r) => {
-            if (!acc[r.nickname] || Number(r.id) > Number(acc[r.nickname].id)) acc[r.nickname] = r;
+            acc[r.nickname] = r;
             return acc;
           }, {})
         ).filter(r => r.submitted_answer !== '시간 초과');
