@@ -635,6 +635,15 @@ export default function App() {
   // 관리자/참가자 모두 동일한 서버 타임스탬프를 기준으로 하므로 완벽히 일치함
   const [timerStartedAt, setTimerStartedAt] = useState(null); // DB의 timer_started_at 저장
 
+  // 타이머 동기화: timerStartedAt 기준으로 남은 시간 계산
+  // currentView를 dependency에서 제거하고 ref로 참조하여 화면 전환 시 interval 재시작 방지
+  const currentViewRef = useRef(currentView);
+  const hasSubmittedAnswerRef = useRef(hasSubmittedAnswer);
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => { currentViewRef.current = currentView; }, [currentView]);
+  useEffect(() => { hasSubmittedAnswerRef.current = hasSubmittedAnswer; }, [hasSubmittedAnswer]);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+
   useEffect(() => {
     if (!quizActive || !timerStartedAt) {
       setQuizTimer(10);
@@ -642,15 +651,18 @@ export default function App() {
       return;
     }
 
+    const startMs = new Date(timerStartedAt).getTime();
+    const DURATION = 10000; // 10초 (ms)
+
     const calcRemaining = () => {
-      const elapsed = (Date.now() - new Date(timerStartedAt).getTime()) / 1000;
-      return Math.max(10 - elapsed, 0);
+      const elapsedMs = Date.now() - startMs;
+      return Math.max(DURATION - elapsedMs, 0) / 1000;
     };
 
-    // 즉시 한 번 계산
-    const initial = calcRemaining();
-    setQuizTimer(Math.ceil(initial));
-    setAdminTimer(Math.ceil(initial));
+    // 즉시 한 번 표시
+    const initialSec = Math.ceil(calcRemaining());
+    setQuizTimer(initialSec);
+    setAdminTimer(initialSec);
 
     const interval = setInterval(() => {
       const remaining = calcRemaining();
@@ -658,20 +670,28 @@ export default function App() {
 
       setAdminTimer(ceiled);
 
-      if (currentView === 'part2-quiz') {
+      // 참여자 화면이면 quizTimer도 동기화
+      if (currentViewRef.current === 'part2-quiz') {
         setQuizTimer(ceiled);
-        if (ceiled <= 0 && !hasSubmittedAnswer) {
+
+        // 시간 종료 & 미제출 처리
+        if (remaining <= 0 && !hasSubmittedAnswerRef.current) {
           setHasSubmittedAnswer(true);
           submitQuizAnswer('시간 초과', 0);
         }
-        if (ceiled > 0 && soundEnabled) playSound('tick');
+
+        // tick 사운드
+        if (ceiled > 0 && ceiled <= 10 && soundEnabledRef.current) {
+          playSound('tick');
+        }
       }
 
       if (remaining <= 0) clearInterval(interval);
-    }, 250); // 250ms마다 체크해서 1초 단위 표시 오차를 최소화
+    }, 250);
 
     return () => clearInterval(interval);
-  }, [quizActive, timerStartedAt, currentView]);
+  // currentView를 제외 — ref로 참조하여 화면 전환 시 interval 재시작 방지
+  }, [quizActive, timerStartedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 정답 공개 시 DB에서 최신 응답 데이터 강제 재로딩
   useEffect(() => {
@@ -699,7 +719,13 @@ export default function App() {
     if (currentView === 'part2-waiting' && quizSessionActive && quizActive) {
       setHasSubmittedAnswer(false);
       setSelectedAnswer('');
-      setQuizTimer(10);
+      // timerStartedAt 기준으로 현재 남은 시간 즉시 계산 (경과 시간 보정)
+      if (timerStartedAt) {
+        const elapsed = (Date.now() - new Date(timerStartedAt).getTime()) / 1000;
+        setQuizTimer(Math.ceil(Math.max(10 - elapsed, 0)));
+      } else {
+        setQuizTimer(10);
+      }
       setCurrentView('part2-quiz');
     }
     // 세션 중단 시 대기 화면으로 복귀
