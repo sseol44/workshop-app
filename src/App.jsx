@@ -668,22 +668,19 @@ export default function App() {
       const remaining = calcRemaining();
       const ceiled = Math.ceil(remaining);
 
+      // 관리자/참여자 항상 동시에 같은 값으로 업데이트
       setAdminTimer(ceiled);
+      setQuizTimer(ceiled);
 
-      // 참여자 화면이면 quizTimer도 동기화
-      if (currentViewRef.current === 'part2-quiz') {
-        setQuizTimer(ceiled);
+      // 시간 종료 & 참여자 미제출 처리
+      if (remaining <= 0 && currentViewRef.current === 'part2-quiz' && !hasSubmittedAnswerRef.current) {
+        setHasSubmittedAnswer(true);
+        submitQuizAnswer('시간 초과', 0);
+      }
 
-        // 시간 종료 & 미제출 처리
-        if (remaining <= 0 && !hasSubmittedAnswerRef.current) {
-          setHasSubmittedAnswer(true);
-          submitQuizAnswer('시간 초과', 0);
-        }
-
-        // tick 사운드
-        if (ceiled > 0 && ceiled <= 10 && soundEnabledRef.current) {
-          playSound('tick');
-        }
+      // tick 사운드 (참여자 화면에서만)
+      if (ceiled > 0 && ceiled <= 10 && currentViewRef.current === 'part2-quiz' && soundEnabledRef.current) {
+        playSound('tick');
       }
 
       if (remaining <= 0) clearInterval(interval);
@@ -2418,12 +2415,6 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                   )}
                 </div>
               )}
-
-              {/* 멀티플레이 시뮬레이터 안내 탭: 화살표 문자 에스케이프 처리 완료 */}
-              <div className="bg-slate-100 border border-slate-200 p-4 rounded-xl text-center text-xs text-slate-500">
-                <p>💡 <b>[멀티플레이어 데모 안내]</b> 이 페이지를 새로운 브라우저 탭(창)으로 하나 더 열고, <br/> 
-                새 창에서 <b>[관리자 로그인 {"->"} 어드민 대시보드]</b>에 접속하면 실시간으로 문제를 주도 및 전환하고 추첨을 즐기실 수 있습니다!</p>
-              </div>
 
               {myAnswerHistory.length > 0 && (
                 <div className="space-y-3">
