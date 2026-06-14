@@ -440,6 +440,7 @@ export default function App() {
   const [hasSubmittedAnswer, setHasSubmittedAnswer] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [myAnswerHistory, setMyAnswerHistory] = useState([]);
+  const [pendingAnswerRecord, setPendingAnswerRecord] = useState(null); // 정답 공개 전 임시 보관
   const [quizStartTime, setQuizStartTime] = useState(null);
   
   // 사운드 상태
@@ -601,6 +602,7 @@ export default function App() {
           setTimerStartedAt(next.timer_started_at);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
+          setPendingAnswerRecord(null);
           setQuizStartTime(Date.now());
         }
         // quiz_active 꺼지면 timerStartedAt 초기화
@@ -690,7 +692,15 @@ export default function App() {
   // currentView를 제외 — ref로 참조하여 화면 전환 시 interval 재시작 방지
   }, [quizActive, timerStartedAt]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 정답 공개 시 DB에서 최신 응답 데이터 강제 재로딩
+  // 정답 공개 시 임시 보관된 응답을 myAnswerHistory에 추가
+  useEffect(() => {
+    if (!adminShowAnswer || !pendingAnswerRecord) return;
+    setMyAnswerHistory(prev => {
+      if (prev.find(h => h.quizId === pendingAnswerRecord.quizId)) return prev;
+      return [...prev, pendingAnswerRecord];
+    });
+    setPendingAnswerRecord(null);
+  }, [adminShowAnswer]);
   useEffect(() => {
     if (!adminShowAnswer) return;
     const reload = async () => {
@@ -783,6 +793,7 @@ export default function App() {
     setQuizActive(false);
     setAdminShowAnswer(false);
     setMyAnswerHistory([]);
+    setPendingAnswerRecord(null);
   };
 
   // 문제 송출 개시 (quiz_active=true → 참여자 화면에 문제 공개)
@@ -1044,16 +1055,14 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
     const timeTaken = 10 - timeLeft;
     const scoreGained = isCorrect ? Math.max(quiz.score - timeTaken, 1) : 0;
 
+    // 정답 공개 전까지 임시 보관 (adminShowAnswer가 true가 될 때 myAnswerHistory에 이동)
     if (answerText !== '시간 초과') {
-      setMyAnswerHistory(prev => {
-        if (prev.find(h => h.quizId === quiz.id)) return prev;
-        return [...prev, {
-          quizId: quiz.id,
-          quizNum: quizList.findIndex(q => q.id === quiz.id) + 1,
-          isCorrect,
-          score: isCorrect ? quiz.score : 0,
-          timeTaken,
-        }];
+      setPendingAnswerRecord({
+        quizId: quiz.id,
+        quizNum: quizList.findIndex(q => q.id === quiz.id) + 1,
+        isCorrect,
+        score: isCorrect ? quiz.score : 0,
+        timeTaken,
       });
     }
 
