@@ -597,25 +597,30 @@ export default function App() {
         setQuizSessionActive(next.session_active === true);
         setQuizActive(next.quiz_active === true);
 
-        // quiz_active가 새로 켜지면 (송출 개시) — timerStartedAt 저장
-        if (!prev.quiz_active && next.quiz_active && next.timer_started_at) {
+        // timer_started_at이 변경됐거나 새로운 송출 개시 시 항상 timerStartedAt 갱신
+        // 시나리오1: 중단 후 새 송출 (!prev.quiz_active && next.quiz_active)
+        // 시나리오2: 송출 중 다음 문제로 전환 (quiz_id 변경 + timer_started_at 변경)
+        const timerChanged = next.timer_started_at && next.timer_started_at !== prev.timer_started_at;
+        if (next.quiz_active && timerChanged) {
           setTimerStartedAt(next.timer_started_at);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
           setPendingAnswerRecord(null);
           setQuizStartTime(Date.now());
         }
+
         // quiz_active 꺼지면 timerStartedAt 초기화
         if (prev.quiz_active && !next.quiz_active) {
           setTimerStartedAt(null);
         }
 
-        // 문제가 바뀐 경우에만 응답 상태 초기화
+        // 문제가 바뀐 경우 응답 상태 추가 초기화
         if (prev.current_quiz_id !== next.current_quiz_id) {
           setQuizTimer(10);
           setAdminTimer(10);
           setHasSubmittedAnswer(false);
           setSelectedAnswer('');
+          setPendingAnswerRecord(null);
           setQuizStartTime(Date.now());
         }
 
@@ -722,11 +727,10 @@ export default function App() {
   // - 송출 개시(quiz_active=true): 수료평가 준비 → 퀴즈 화면
   // - 세션 중단(session_active=false): 퀴즈/준비 → 수료평가 대기
   useEffect(() => {
-    // 송출 개시 시 퀴즈 화면으로 전환
+    // 송출 개시 시 퀴즈 화면으로 전환 (대기 화면에서)
     if (currentView === 'part2-waiting' && quizSessionActive && quizActive) {
       setHasSubmittedAnswer(false);
       setSelectedAnswer('');
-      // timerStartedAt 기준으로 현재 남은 시간 즉시 계산 (경과 시간 보정)
       if (timerStartedAt) {
         const elapsed = (Date.now() - new Date(timerStartedAt).getTime()) / 1000;
         setQuizTimer(Math.ceil(Math.max(10 - elapsed, 0)));
@@ -734,6 +738,11 @@ export default function App() {
         setQuizTimer(10);
       }
       setCurrentView('part2-quiz');
+    }
+    // 이미 퀴즈 화면에 있을 때 새 문제가 송출되면 (두 번째 문제부터) 타이머 리셋
+    if (currentView === 'part2-quiz' && quizSessionActive && quizActive && timerStartedAt) {
+      const elapsed = (Date.now() - new Date(timerStartedAt).getTime()) / 1000;
+      setQuizTimer(Math.ceil(Math.max(10 - elapsed, 0)));
     }
     // 세션 중단 시 대기 화면으로 복귀
     if ((currentView === 'part2-quiz' || currentView === 'part2-waiting') && !quizSessionActive) {
@@ -743,7 +752,7 @@ export default function App() {
     if (currentView === 'part2-quiz' && quizSessionActive && !quizActive) {
       setCurrentView('part2-waiting');
     }
-  }, [quizSessionActive, quizActive, currentView]);
+  }, [quizSessionActive, quizActive, currentView, timerStartedAt]);
 
   const updateAdminStatus = async (quizId, showAnswer, sessionActive = quizSessionActive, quizActiveVal = quizActive) => {
     await supabase
