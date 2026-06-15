@@ -3669,14 +3669,15 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
         const incorrectRate = totalCount > 0 ? 100 - correctRate : 0;
 
         return (
-          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-3xl w-full p-8 space-y-6 shadow-2xl my-8">
-              <div className="flex items-center justify-between border-b pb-3">
+          <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
+            <div className="bg-white border border-slate-200 rounded-2xl w-[80vw] max-h-[88vh] shadow-2xl flex flex-col overflow-hidden">
+              {/* 헤더 */}
+              <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
                 <h4 className="font-black text-slate-800 text-xl flex items-center space-x-2">
                   <Award className="w-7 h-7 text-yellow-500 fill-yellow-500" />
                   <span>실시간 즉석 추첨기 (문제 {currentQuiz?.id})</span>
                 </h4>
-                <button 
+                <button
                   onClick={() => setIsRaffleModalOpen(false)}
                   className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
                 >
@@ -3684,189 +3685,192 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                 </button>
               </div>
 
-              {/* 1. 정답자/오답자 수와 비율 표시 */}
-              <div className="bg-slate-50 rounded-xl p-5 border border-slate-100 space-y-3 text-xs">
-                <div className="flex justify-between items-center text-slate-700 font-bold text-sm">
-                  <span>총 제출 현황: {totalCount}명</span>
-                  <span className="text-cyan-600">Q{currentQuiz?.id} 문제</span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4 text-center">
-                    <p className="text-emerald-700 font-bold mb-1">정답자</p>
-                    <p className="text-xl font-black text-emerald-800">{correctCount}명 ({correctRate}%)</p>
-                  </div>
-                  <div className="bg-rose-50 border border-rose-100 rounded-lg p-4 text-center">
-                    <p className="text-rose-700 font-bold mb-1">오답자</p>
-                    <p className="text-xl font-black text-rose-800">{incorrectCount}명 ({incorrectRate}%)</p>
-                  </div>
-                </div>
+              {/* 바디: 좌(70%) + 우(30%) */}
+              <div className="flex flex-1 overflow-hidden">
 
-                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
-                  <div className="h-full bg-emerald-500" style={{ width: `${correctRate}%` }} />
-                  <div className="h-full bg-rose-400" style={{ width: `${incorrectRate}%` }} />
-                </div>
-              </div>
-
-              {/* 추첨 방식 결정 */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-2">추첨 방식</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      setDrawMethod('roulette');
-                      setIsRaffleAssigned(false);
-                      setDrawWinner(null);
-                    }}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-all
-                      ${drawMethod === 'roulette' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
-                  >
-                    룰렛 회전판
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDrawMethod('ladder');
-                      setIsRaffleAssigned(false);
-                      setDrawWinner(null);
-                    }}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition-all
-                      ${drawMethod === 'ladder' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
-                  >
-                    사다리 시뮬레이션
-                  </button>
-                </div>
-              </div>
-
-              {/* 추첨판 시각화 영역 */}
-              <div className="bg-slate-50 rounded-xl p-6 flex flex-col items-center justify-center min-h-[350px] border border-slate-100 relative overflow-hidden">
-                {!isRaffleAssigned ? (
-                  <div className="w-full space-y-4">
-                    <div className="text-center space-y-1">
-                      <Users className="w-10 h-10 mx-auto text-slate-300" />
-                      <p className="font-bold text-base text-slate-500">추첨 대상자 명단</p>
-                      <p className="text-xs text-slate-400">하단 '즉석 기프티콘 추첨 시작' 버튼을 눌러 추첨판을 배정해주세요.</p>
-                    </div>
-                    {correctResponses.length === 0 ? (
-                      <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
-                        <p className="text-xs text-slate-400 font-semibold">아직 정답자가 없습니다.</p>
+                {/* ── 왼쪽: 추첨판 시각화 (70%) ── */}
+                <div className="w-[70%] bg-slate-50 border-r border-slate-100 flex flex-col items-center justify-center relative overflow-hidden p-6">
+                  {!isRaffleAssigned ? (
+                    <div className="w-full space-y-4">
+                      <div className="text-center space-y-1">
+                        <Users className="w-10 h-10 mx-auto text-slate-300" />
+                        <p className="font-bold text-base text-slate-500">추첨 대상자 명단</p>
+                        <p className="text-xs text-slate-400">오른쪽 '추첨시작' 버튼을 눌러 추첨판을 배정해주세요.</p>
                       </div>
-                    ) : (
-                      <div className="bg-white border border-emerald-100 rounded-xl p-4 space-y-2">
-                        <p className="text-[11px] font-bold text-emerald-600 mb-2">
-                          ✅ 정답자 {correctResponses.length}명
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {correctResponses.map((r, idx) => (
-                            <div key={idx} className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
-                              <span className="w-4 h-4 bg-emerald-500 text-white rounded-full text-[9px] font-black flex items-center justify-center">{idx + 1}</span>
-                              <span className="text-xs font-bold text-emerald-700">{r.nickname}</span>
-                            </div>
-                          ))}
+                      {correctResponses.length === 0 ? (
+                        <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
+                          <p className="text-xs text-slate-400 font-semibold">아직 정답자가 없습니다.</p>
+                        </div>
+                      ) : (
+                        <div className="bg-white border border-emerald-100 rounded-xl p-4 space-y-2">
+                          <p className="text-[11px] font-bold text-emerald-600 mb-2">
+                            ✅ 정답자 {correctResponses.length}명
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {correctResponses.map((r, idx) => (
+                              <div key={idx} className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                                <span className="w-4 h-4 bg-emerald-500 text-white rounded-full text-[9px] font-black flex items-center justify-center">{idx + 1}</span>
+                                <span className="text-xs font-bold text-emerald-700">{r.nickname}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : drawMethod === 'roulette' ? (
+                    <RouletteWheel
+                      participants={correctResponses}
+                      canvasRef={rouletteCanvasRef}
+                      angleRef={rouletteAngleRef}
+                      drawFn={drawRouletteWheel}
+                    />
+                  ) : (
+                    <LadderGame
+                      participants={correctResponses}
+                      isDrawing={isDrawing && drawMethod === 'ladder'}
+                      onWinner={(winner) => {
+                        setDrawWinner(winner);
+                        setIsDrawing(false);
+                        if (soundEnabled) playSound('success');
+                      }}
+                    />
+                  )}
+
+                  {isDrawing && drawMethod !== 'ladder' && (
+                    <div className="absolute inset-0 bg-slate-900/40 text-white flex items-center justify-center font-black animate-pulse text-sm">
+                      추첨 진행 중...
+                    </div>
+                  )}
+
+                  {drawWinner && (
+                    <div className="absolute inset-0 bg-emerald-500 text-white flex flex-col items-center justify-center p-4 text-center z-20">
+                      <Award className="w-12 h-12 text-yellow-300 mb-1" />
+                      <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">당첨을 축하드립니다!</span>
+                      <h5 className="font-extrabold text-xl mt-1">{drawWinner.nickname}</h5>
+                      <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.time_taken}초</p>
+                      <button
+                        onClick={() => {
+                          const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
+                          setRaffleHistory(prev => {
+                            const filtered = prev.filter(h => h.quizId !== currentAdminQuizId);
+                            return [...filtered, {
+                              quizId: currentAdminQuizId,
+                              quizNum: activeQuiz ? activeQuiz.id : currentAdminQuizId,
+                              quizTitle: activeQuiz ? activeQuiz.question.slice(0, 20) : `Q${currentAdminQuizId}`,
+                              winner: drawWinner.nickname,
+                            }];
+                          });
+                          setDrawWinner(null);
+                          setIsRaffleAssigned(false);
+                          setIsDrawing(false);
+                        }}
+                        className="mt-3 bg-white text-slate-800 text-xs font-bold py-1 px-4 rounded-md shadow hover:bg-slate-50 transition-colors"
+                      >
+                        확인하였습니다
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── 오른쪽: 컨트롤 패널 (30%) ── */}
+                <div className="w-[30%] flex flex-col justify-between p-5 overflow-y-auto">
+                  <div className="space-y-5">
+                    {/* 총 제출 현황 */}
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 space-y-3 text-xs">
+                      <div className="flex justify-between items-center text-slate-700 font-bold text-sm">
+                        <span>총 제출 현황: {totalCount}명</span>
+                        <span className="text-cyan-600">Q{currentQuiz?.id} 문제</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-center">
+                          <p className="text-emerald-700 font-bold mb-0.5">정답자</p>
+                          <p className="text-base font-black text-emerald-800">{correctCount}명 ({correctRate}%)</p>
+                        </div>
+                        <div className="bg-rose-50 border border-rose-100 rounded-lg p-3 text-center">
+                          <p className="text-rose-700 font-bold mb-0.5">오답자</p>
+                          <p className="text-base font-black text-rose-800">{incorrectCount}명 ({incorrectRate}%)</p>
                         </div>
                       </div>
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden flex">
+                        <div className="h-full bg-emerald-500" style={{ width: `${correctRate}%` }} />
+                        <div className="h-full bg-rose-400" style={{ width: `${incorrectRate}%` }} />
+                      </div>
+                    </div>
+
+                    {/* 추첨 방식 */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2">추첨 방식</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => {
+                            setDrawMethod('roulette');
+                            setIsRaffleAssigned(false);
+                            setDrawWinner(null);
+                          }}
+                          className={`py-2 px-2 text-xs font-bold rounded-lg border text-center transition-all
+                            ${drawMethod === 'roulette' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
+                        >
+                          룰렛 회전판
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDrawMethod('ladder');
+                            setIsRaffleAssigned(false);
+                            setDrawWinner(null);
+                          }}
+                          className={`py-2 px-2 text-xs font-bold rounded-lg border text-center transition-all
+                            ${drawMethod === 'ladder' ? 'bg-slate-800 text-white border-slate-800' : 'bg-slate-50 text-slate-600'}`}
+                        >
+                          사다리 시뮬레이션
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 하단 버튼 */}
+                  <div className="space-y-2 pt-4 text-xs">
+                    {!isRaffleAssigned ? (
+                      <button
+                        onClick={() => {
+                          if (correctCount === 0) {
+                            triggerAlert("배정 불가", "해당 문제의 정답자가 존재하지 않아 추첨을 구성할 수 없습니다.");
+                            return;
+                          }
+                          setIsRaffleAssigned(true);
+                          rouletteAngleRef.current = 0;
+                          setTimeout(() => {
+                            if (rouletteCanvasRef.current) {
+                              const correctList = quizResponses.filter(r =>
+                                Number(r.quiz_id) === Number(currentAdminQuizId) && r.is_correct
+                              );
+                              drawRouletteWheel(rouletteCanvasRef.current, correctList, 0);
+                            }
+                          }, 100);
+                          triggerAlert("배정 완료", `정답자 ${correctCount}명이 추첨판에 성공적으로 배치되었습니다.`);
+                        }}
+                        className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl shadow transition-all"
+                      >
+                        추첨시작
+                      </button>
+                    ) : (
+                      <button
+                        onClick={startDrawing}
+                        disabled={isDrawing}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow transition-all disabled:opacity-50"
+                      >
+                        {isDrawing ? "추첨 진행 중..." : "추첨시작"}
+                      </button>
                     )}
-                  </div>
-                ) : drawMethod === 'roulette' ? (
-                  <RouletteWheel
-                    participants={correctResponses}
-                    canvasRef={rouletteCanvasRef}
-                    angleRef={rouletteAngleRef}
-                    drawFn={drawRouletteWheel}
-                  />
-                ) : (
-                  <LadderGame
-                    participants={correctResponses}
-                    isDrawing={isDrawing && drawMethod === 'ladder'}
-                    onWinner={(winner) => {
-                      setDrawWinner(winner);
-                      setIsDrawing(false);
-                      if (soundEnabled) playSound('success');
-                    }}
-                  />
-                )}
-
-                {isDrawing && drawMethod !== 'ladder' && (
-                  <div className="absolute inset-0 bg-slate-900/40 text-white flex items-center justify-center font-black animate-pulse text-sm">
-                    추첨 진행 중...
-                  </div>
-                )}
-
-                {drawWinner && (
-                  <div className="absolute inset-0 bg-emerald-500 text-white flex flex-col items-center justify-center p-4 text-center z-20">
-                    <Award className="w-12 h-12 text-yellow-300 mb-1" />
-                    <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">당첨을 축하드립니다!</span>
-                    <h5 className="font-extrabold text-xl mt-1">{drawWinner.nickname}</h5>
-                    <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.time_taken}초</p>
                     <button
-                      onClick={() => {
-                        // raffleHistory에 이 문제의 당첨자 저장 (같은 quiz_id면 교체)
-                        const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
-                        setRaffleHistory(prev => {
-                          const filtered = prev.filter(h => h.quizId !== currentAdminQuizId);
-                          return [...filtered, {
-                            quizId: currentAdminQuizId,
-                            quizNum: activeQuiz ? activeQuiz.id : currentAdminQuizId,
-                            quizTitle: activeQuiz ? activeQuiz.question.slice(0, 20) : `Q${currentAdminQuizId}`,
-                            winner: drawWinner.nickname,
-                          }];
-                        });
-                        // 추첨기 완전 리셋
-                        setDrawWinner(null);
-                        setIsRaffleAssigned(false);
-                        setIsDrawing(false);
-                      }}
-                      className="mt-3 bg-white text-slate-800 text-xs font-bold py-1 px-4 rounded-md shadow hover:bg-slate-50 transition-colors"
+                      onClick={() => setIsRaffleModalOpen(false)}
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-all"
                     >
-                      확인하였습니다
+                      닫기
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* 제어 버튼 구성 */}
-              <div className="flex space-x-3 text-xs">
-                {!isRaffleAssigned ? (
-                  <button
-                    onClick={() => {
-                      if (correctCount === 0) {
-                        triggerAlert("배정 불가", "해당 문제의 정답자가 존재하지 않아 추첨을 구성할 수 없습니다.");
-                        return;
-                      }
-                      setIsRaffleAssigned(true);
-                      rouletteAngleRef.current = 0;
-                      // 배정 직후 Canvas 초기 그리기 (setTimeout으로 DOM 업데이트 대기)
-                      setTimeout(() => {
-                        if (rouletteCanvasRef.current) {
-                          const correctList = quizResponses.filter(r =>
-                            Number(r.quiz_id) === Number(currentAdminQuizId) && r.is_correct
-                          );
-                          drawRouletteWheel(rouletteCanvasRef.current, correctList, 0);
-                        }
-                      }, 100);
-                      triggerAlert("배정 완료", `정답자 ${correctCount}명이 추첨판에 성공적으로 배치되었습니다.`);
-                    }}
-                    className="flex-1 bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl shadow transition-all"
-                  >
-                    즉석 기프티콘 추첨 시작
-                  </button>
-                ) : (
-                  <button
-                    onClick={startDrawing}
-                    disabled={isDrawing}
-                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl shadow transition-all disabled:opacity-50"
-                  >
-                    {isDrawing ? "추첨 진행 중..." : "추첨시작"}
-                  </button>
-                )}
-                
-                <button
-                  onClick={() => setIsRaffleModalOpen(false)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-6 rounded-xl transition-all"
-                >
-                  닫기
-                </button>
               </div>
-
             </div>
           </div>
         );
