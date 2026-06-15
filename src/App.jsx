@@ -457,6 +457,7 @@ export default function App() {
   const rouletteAngleRef = useRef(0);
   const [isRaffleModalOpen, setIsRaffleModalOpen] = useState(false);
   const [isRaffleAssigned, setIsRaffleAssigned] = useState(false);
+  const [raffleHistory, setRaffleHistory] = useState([]); // 문제별 추첨 결과 누적
   const [isLiveQuizModalOpen, setIsLiveQuizModalOpen] = useState(false);
   const [isQuizBankModalOpen, setIsQuizBankModalOpen] = useState(false);
 
@@ -1330,6 +1331,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
       await supabase.from('quiz_participants').delete().neq('id', 0);
       setQuizResponses([]);
       setWaitingParticipants([]);
+      setRaffleHistory([]);
       await updateAdminStatus(1, false);
       triggerAlert("초기화 완료", "파트2 데이터가 완벽하게 초기화되었습니다.");
     }
@@ -3474,6 +3476,35 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     <Award className="w-5 h-5" />
                     <span>추첨기 팝업 호출하기</span>
                   </button>
+
+                  {/* 문제별 추첨 결과 누적 표시 */}
+                  {raffleHistory.length > 0 && (
+                    <div className="bg-white border border-amber-100 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-bold text-amber-700">🏆 문제별 당첨자 누적 기록</p>
+                        <button
+                          onClick={() => setRaffleHistory([])}
+                          className="text-[9px] text-slate-400 hover:text-rose-500 font-bold transition-all"
+                        >
+                          초기화
+                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        {raffleHistory.map((h, i) => (
+                          <div key={i} className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] font-black text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">Q{h.quizNum}</span>
+                              <span className="text-[10px] text-slate-500 truncate max-w-[80px]">{h.quizTitle}...</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-xs">🎁</span>
+                              <span className="text-xs font-black text-emerald-700">{h.winner}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               </div>
@@ -3658,11 +3689,27 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                     <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">당첨을 축하드립니다!</span>
                     <h5 className="font-extrabold text-xl mt-1">{drawWinner.nickname}</h5>
                     <p className="text-[10px] opacity-80 mt-1">답안 제출 시간: {drawWinner.time_taken}초</p>
-                    <button 
-                      onClick={() => setDrawWinner(null)}
+                    <button
+                      onClick={() => {
+                        // raffleHistory에 이 문제의 당첨자 저장 (같은 quiz_id면 교체)
+                        const activeQuiz = quizList.find(q => q.id === currentAdminQuizId) || quizList[0];
+                        setRaffleHistory(prev => {
+                          const filtered = prev.filter(h => h.quizId !== currentAdminQuizId);
+                          return [...filtered, {
+                            quizId: currentAdminQuizId,
+                            quizNum: activeQuiz ? activeQuiz.id : currentAdminQuizId,
+                            quizTitle: activeQuiz ? activeQuiz.question.slice(0, 20) : `Q${currentAdminQuizId}`,
+                            winner: drawWinner.nickname,
+                          }];
+                        });
+                        // 추첨기 완전 리셋
+                        setDrawWinner(null);
+                        setIsRaffleAssigned(false);
+                        setIsDrawing(false);
+                      }}
                       className="mt-3 bg-white text-slate-800 text-xs font-bold py-1 px-4 rounded-md shadow hover:bg-slate-50 transition-colors"
                     >
-                      확인 완료
+                      확인하였습니다
                     </button>
                   </div>
                 )}
