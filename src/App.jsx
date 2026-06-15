@@ -428,6 +428,7 @@ export default function App() {
   const [vocText, setVocText] = useState('');
   const [aiReport, setAiReport] = useState(null);
   const [isAiAnalyzing, setIsAiAnalyzing] = useState(false);
+  const [aiAnalysisCount, setAiAnalysisCount] = useState(0); // AI 분석 실행 횟수
   const [autoAnalysisEnabled, setAutoAnalysisEnabled] = useState(true);   // 자동 분석 ON/OFF
   const [autoAnalysisInterval, setAutoAnalysisInterval] = useState(3);    // N명 제출마다 1회 자동 분석
 
@@ -1044,6 +1045,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
         parsed,
       };
       setAiReport(reportData);
+      setAiAnalysisCount(prev => prev + 1);
       triggerAlert("AI 분석 완료", "Gemini가 조직개선 피드백을 종합 분석하였습니다!");
     } catch (error) {
       console.error(error);
@@ -1321,6 +1323,8 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
       await supabase.from('survey_results').delete().neq('id', '');
       setSurveyResults([]);
       setAiReport(null);
+      setAiAnalysisCount(0);
+      setAiAnalysisCount(0);
       triggerAlert("초기화 완료", "파트1 데이터가 성공적으로 삭제되었습니다.");
     }
   };
@@ -1334,6 +1338,46 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
       setRaffleHistory([]);
       await updateAdminStatus(1, false);
       triggerAlert("초기화 완료", "파트2 데이터가 완벽하게 초기화되었습니다.");
+    }
+  };
+
+  // 설문 문항 다운로드
+  const handleDownloadQuestions = async () => {
+    try {
+      if (!window.XLSX) {
+        const script = document.createElement('script');
+        script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+        });
+      }
+      const XLSX = window.XLSX;
+      const wb = XLSX.utils.book_new();
+
+      // 만족도 조사 문항 시트
+      const satRows = [['번호', '부문', '질문']];
+      SATISFACTION_QUESTIONS.forEach((q, i) => {
+        satRows.push([i + 1, q.category, q.text]);
+      });
+      const satSheet = XLSX.utils.aoa_to_sheet(satRows);
+      satSheet['!cols'] = [{ wch: 6 }, { wch: 12 }, { wch: 50 }];
+      XLSX.utils.book_append_sheet(wb, satSheet, '만족도 조사 문항');
+
+      // 밸런스 게임 문항 시트
+      const balRows = [['번호', '차원', '질문', 'A 선택지', 'B 선택지']];
+      BALANCE_QUESTIONS.forEach((q, i) => {
+        balRows.push([i + 1, q.category, q.text, q.optionA, q.optionB]);
+      });
+      const balSheet = XLSX.utils.aoa_to_sheet(balRows);
+      balSheet['!cols'] = [{ wch: 6 }, { wch: 10 }, { wch: 40 }, { wch: 25 }, { wch: 25 }];
+      XLSX.utils.book_append_sheet(wb, balSheet, '밸런스게임 문항');
+
+      XLSX.writeFile(wb, `워크샵_설문문항_${new Date().toLocaleDateString('ko-KR').replace(/\. /g,'-').replace('.','')}.xlsx`);
+    } catch (e) {
+      triggerAlert("다운로드 오류", "문항 다운로드 중 오류가 발생했습니다: " + e.message);
     }
   };
 
@@ -2717,40 +2761,104 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                 </div>
 
                 {/* 설문 데이터 엑셀 다운로드 */}
-                <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h5 className="font-bold text-emerald-800 flex items-center space-x-1.5 text-sm">
-                    <FileSpreadsheet className="w-4.5 h-4.5 text-emerald-600" />
-                    <span>설문 데이터 엑셀 다운로드</span>
-                  </h5>
-                  <p className="text-xs text-emerald-600/80">현재까지 수집된 모든 설문 데이터(만족도, 밸런스게임, VOC)를 엑셀 파일(.xlsx)로 다운로드합니다.</p>
-                  <div className="pt-2">
+                <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <h5 className="font-bold text-emerald-800 flex items-center space-x-1.5 text-sm border-b border-emerald-100 pb-3 mb-4">
+                      <FileSpreadsheet className="w-4.5 h-4.5 text-emerald-600" />
+                      <span>설문 데이터 엑셀 다운로드</span>
+                    </h5>
+
+                    {/* 문항 수 통계 타일 */}
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="bg-white border border-emerald-100 rounded-xl p-3 text-center">
+                        <p className="text-[10px] text-emerald-600 font-bold">만족도 문항</p>
+                        <p className="text-2xl font-black text-emerald-700">{SATISFACTION_QUESTIONS.length}</p>
+                        <p className="text-[10px] text-emerald-500">문항</p>
+                      </div>
+                      <div className="bg-white border border-emerald-100 rounded-xl p-3 text-center">
+                        <p className="text-[10px] text-cyan-600 font-bold">밸런스게임 문항</p>
+                        <p className="text-2xl font-black text-cyan-700">{BALANCE_QUESTIONS.length}</p>
+                        <p className="text-[10px] text-cyan-500">문항</p>
+                      </div>
+                    </div>
+
+                    {/* 문항 질문 다운로드 */}
                     <button
-                      onClick={handleDownloadExcel}
-                      disabled={surveyResults.length === 0}
-                      className="w-full bg-white hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-extrabold py-2.5 px-4 rounded-lg shadow-xs transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                      onClick={() => {
+                        const lines = [];
+                        lines.push('=== 만족도 조사 문항 ===');
+                        SATISFACTION_QUESTIONS.forEach((q, i) => {
+                          lines.push(`${i+1}. [${q.category}] ${q.text}`);
+                        });
+                        lines.push('');
+                        lines.push('=== 밸런스 게임 문항 ===');
+                        BALANCE_QUESTIONS.forEach((q, i) => {
+                          lines.push(`${i+1}. [${q.category}] ${q.text}`);
+                          lines.push(`   A: ${q.optionA}`);
+                          lines.push(`   B: ${q.optionB}`);
+                        });
+                        const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = '설문문항목록.txt';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="w-full bg-white hover:bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-bold py-2 px-3 rounded-lg transition-all flex items-center justify-center space-x-1.5 mb-2"
                     >
-                      <Download className="w-4 h-4 text-emerald-600" />
-                      <span>엑셀 다운로드 (.xlsx)</span>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>문항 질문 목록 다운로드 (.txt)</span>
                     </button>
                   </div>
+
+                  {/* 응답 데이터 다운로드 */}
+                  <button
+                    onClick={handleDownloadExcel}
+                    disabled={surveyResults.length === 0}
+                    className="w-full bg-white hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-extrabold py-2.5 px-4 rounded-lg shadow-xs transition-all flex items-center justify-center space-x-1.5 disabled:opacity-50"
+                  >
+                    <Download className="w-4 h-4 text-emerald-600" />
+                    <span>응답 데이터 엑셀 다운로드 (.xlsx)</span>
+                  </button>
                 </div>
 
                 {/* 파트 1 데이터 초기화 */}
-                <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-6 shadow-sm space-y-4">
-                  <h5 className="font-bold text-rose-800 flex items-center space-x-1.5 text-sm">
-                    <Trash2 className="w-4.5 h-4.5 text-rose-600" />
-                    <span>파트 1 설문 데이터 초기화</span>
-                  </h5>
-                  <p className="text-xs text-rose-600/80">수집된 설문조사 및 작성된 AI 보고서 데이터를 완전히 리셋합니다.</p>
-                  <div className="pt-2">
-                    <button
-                      onClick={resetPart1Data}
-                      className="w-full bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center space-x-1.5"
-                    >
-                      <Trash2 className="w-4 h-4 text-rose-600" />
-                      <span>파트 1 설문 & AI 리포트 초기화</span>
-                    </button>
+                <div className="bg-rose-50/50 border border-rose-100 rounded-2xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div>
+                    <h5 className="font-bold text-rose-800 flex items-center space-x-1.5 text-sm border-b border-rose-100 pb-3 mb-4">
+                      <Trash2 className="w-4.5 h-4.5 text-rose-600" />
+                      <span>파트 1 설문 데이터 초기화</span>
+                    </h5>
+                    <p className="text-xs text-rose-600/80 mb-4">수집된 설문조사 및 작성된 AI 보고서 데이터를 완전히 리셋합니다.</p>
+
+                    {/* 응답 현황 통계 */}
+                    <div className="space-y-2">
+                      <div className="bg-white border border-slate-100 rounded-xl p-3 space-y-1.5 text-xs">
+                        <p className="font-bold text-slate-600">📊 현재 응답 현황</p>
+                        <div className="flex justify-between text-slate-500">
+                          <span>총 응답자</span>
+                          <span className="font-black text-slate-700">{surveyResults.length}명</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                          <span>AI 분석 실행 횟수</span>
+                          <span className="font-black text-cyan-600">{aiAnalysisCount}회</span>
+                        </div>
+                        <div className="flex justify-between text-slate-500">
+                          <span>VOC 작성자</span>
+                          <span className="font-black text-slate-700">{surveyResults.filter(r => r.voc).length}명</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  <button
+                    onClick={resetPart1Data}
+                    className="w-full bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-xs font-extrabold py-2.5 px-4 rounded-lg transition-all flex items-center justify-center space-x-1.5"
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span>파트 1 설문 & AI 리포트 초기화</span>
+                  </button>
                 </div>
               </div>
             </div>
