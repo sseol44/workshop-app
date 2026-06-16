@@ -174,11 +174,34 @@ function LadderGame({ participants, isDrawing, onWinner }) {
 
   const buildLadder = useCallback((n, rows) => {
     const rungs = Array.from({ length: rows }, () => Array(n - 1).fill(false));
+    const slots = n - 1;
+
     for (let row = 0; row < rows; row++) {
+      // 1단계: 랜덤 배치
       let col = 0;
-      while (col < n - 1) {
-        if (Math.random() < 0.45) { rungs[row][col] = true; col += 2; }
+      while (col < slots) {
+        if (Math.random() < 0.55) { rungs[row][col] = true; col += 2; }
         else col++;
+      }
+
+      // 2단계: 최소 2개 보장 (슬롯이 1개면 최대 1개)
+      const MIN_RUNGS = Math.min(2, slots);
+      let count = rungs[row].filter(Boolean).length;
+      let attempts = 0;
+      while (count < MIN_RUNGS && attempts < 200) {
+        attempts++;
+        const candidates = [];
+        for (let c = 0; c < slots; c++) {
+          if (!rungs[row][c]
+            && (c === 0 || !rungs[row][c - 1])
+            && (c === slots - 1 || !rungs[row][c + 1])) {
+            candidates.push(c);
+          }
+        }
+        if (candidates.length === 0) break;
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        rungs[row][pick] = true;
+        count++;
       }
     }
     return rungs;
@@ -773,11 +796,8 @@ export default function App() {
       setAdminTimer(ceiled);
       setQuizTimer(ceiled);
 
-      // 시간 종료 & 참여자 미제출 처리
-      if (remaining <= 0 && currentViewRef.current === 'part2-quiz' && !hasSubmittedAnswerRef.current) {
-        setHasSubmittedAnswer(true);
-        submitQuizAnswer('시간 초과', 0);
-      }
+      // 시간 종료 — 미제출 상태 그대로 유지 (자동 제출 없음)
+      // quizTimer === 0 & !hasSubmittedAnswer 조건으로 UI에서 별도 처리
 
       // tick 사운드 (참여자 화면에서만)
       if (ceiled > 0 && ceiled <= 10 && currentViewRef.current === 'part2-quiz' && soundEnabledRef.current) {
@@ -2409,33 +2429,24 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
                 {/* 답안 입력 UI */}
                 {hasSubmittedAnswer ? (
+                  /* 직접 제출 완료 */
                   <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100">
-                    {selectedAnswer === '시간 초과' ? (
-                      <>
-                        <div className="text-3xl mb-2">⏰</div>
-                        <p className="font-bold text-rose-600">시간 내에 응답을 제출하지 못했습니다</p>
-                        <p className="text-xs text-rose-400 mt-1">이번 문제는 미제출로 처리됩니다.</p>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-10 h-10 text-cyan-500 mx-auto mb-2" />
-                        <p className="font-bold text-slate-700">답안 제출을 완료했습니다!</p>
-                        <p className="text-xs text-slate-400 mt-1">관리자가 정답과 분포를 오픈할 때까지 잠시 대기해주세요.</p>
-                        {selectedAnswer && (
-                          <div className="mt-3 inline-block bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2">
-                            <p className="text-xs text-slate-500 font-semibold">제출한 답안</p>
-                            <p className="text-base font-black text-cyan-700 mt-0.5">{selectedAnswer}</p>
-                          </div>
-                        )}
-                      </>
+                    <CheckCircle className="w-10 h-10 text-cyan-500 mx-auto mb-2" />
+                    <p className="font-bold text-slate-700">답안 제출을 완료했습니다!</p>
+                    <p className="text-xs text-slate-400 mt-1">관리자가 정답과 분포를 오픈할 때까지 잠시 대기해주세요.</p>
+                    {selectedAnswer && (
+                      <div className="mt-3 inline-block bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2">
+                        <p className="text-xs text-slate-500 font-semibold">제출한 답안</p>
+                        <p className="text-base font-black text-cyan-700 mt-0.5">{selectedAnswer}</p>
+                      </div>
                     )}
                   </div>
                 ) : quizTimer === 0 ? (
-                  /* 타이머 종료 — 미제출 상태에서 시간 초과 */
+                  /* 타이머 종료 — 미제출 */
                   <div className="text-center py-6 bg-rose-50 rounded-xl border border-rose-200">
                     <div className="text-3xl mb-2">⏰</div>
-                    <p className="font-bold text-rose-700">시간이 종료되었습니다!</p>
-                    <p className="text-xs text-rose-500 mt-1">이번 문제는 미제출로 처리됩니다.</p>
+                    <p className="font-bold text-rose-600">시간 내에 응답을 제출하지 못했습니다</p>
+                    <p className="text-xs text-rose-400 mt-1">이번 문제는 미제출로 처리됩니다.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
