@@ -2288,7 +2288,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                   type="text" 
                   value={quizParticipant} 
                   onChange={(e) => setQuizParticipant(e.target.value)} 
-                  placeholder="예: 홍길동 대리, 김구매 과장"
+                  placeholder="예: 홍길동, 김구매, 이프로"
                   className="w-full border border-slate-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200/80 outline-none rounded-xl px-4 py-3 text-base transition-all"
                 />
               </div>
@@ -2619,15 +2619,38 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                   <div className="bg-white border border-slate-200 rounded-2xl p-4">
                     <p className="text-xs font-bold text-slate-500 mb-3">📝 문제별 응답 내역</p>
                     <div className="flex flex-wrap gap-2">
-                      {myAnswerHistory.map((h) => (
-                        <div key={h.quizId} className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-bold ${h.isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
-                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${h.isCorrect ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                            {h.quizNum}
-                          </span>
-                          <span>{h.isCorrect ? '⭕' : '❌'}</span>
-                          <span className="text-[10px] font-semibold opacity-70">{h.timeTaken}초</span>
-                        </div>
-                      ))}
+                      {quizList.map((q, idx) => {
+                        const h = myAnswerHistory.find(a => a.quizId === q.id);
+                        const quizNum = idx + 1;
+                        if (h) {
+                          // 응답한 문제
+                          return (
+                            <div key={q.id} className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-bold ${h.isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${h.isCorrect ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                                {quizNum}
+                              </span>
+                              <span>{h.isCorrect ? '⭕' : '❌'}</span>
+                              <span className="text-[10px] font-semibold opacity-70">{h.timeTaken}초</span>
+                            </div>
+                          );
+                        } else {
+                          // 미응답 문제: myAnswerHistory 중 더 큰 quizId가 존재하면
+                          // 해당 문제를 지나쳐 정답이 공개된 것으로 간주
+                          const maxRevealedId = myAnswerHistory.length > 0
+                            ? Math.max(...myAnswerHistory.map(a => a.quizId))
+                            : -1;
+                          if (q.id > maxRevealedId) return null; // 아직 공개 안 된 문제 생략
+                          return (
+                            <div key={q.id} className="flex items-center space-x-1.5 px-3 py-2 rounded-xl border text-xs font-bold bg-slate-50 border-slate-200 text-slate-400">
+                              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black bg-slate-300 text-white">
+                                {quizNum}
+                              </span>
+                              <span>−</span>
+                              <span className="text-[10px] font-semibold">미응답</span>
+                            </div>
+                          );
+                        }
+                      })}
                     </div>
                   </div>
                 </div>
