@@ -299,12 +299,14 @@ function LadderGame({ participants, isDrawing, onWinner }) {
   }, []);
 
   // showRungs: false=가로줄 숨김, rungAlpha 0~1=fade
-  const drawScene = useCallback((canvas, rungs, winnerDestCol, opts) => {
+  const drawScene = useCallback((canvas, rungs, winnerDestCol, opts, frozenP) => {
     if (!canvas) return;
     const { W, H, n, PAD_TOP, PAD_BOT, rows, colW, rowH, cx, cy } = getLayout(canvas);
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
     const { rungAlpha = 0, progresses = null, pixelPaths = null } = opts || {};
+    // 그리기에 사용할 참여자 목록: frozenP(스냅샷) 우선, 없으면 현재 participants
+    const drawParticipants = frozenP || participants;
 
     // 세로줄
     for (let col = 0; col < n; col++) {
@@ -334,7 +336,7 @@ function LadderGame({ participants, isDrawing, onWinner }) {
 
     // 경로 선 + 마커
     if (progresses && pixelPaths) {
-      participants.forEach((p, idx) => {
+      drawParticipants.forEach((p, idx) => {
         const t = progresses[idx];
         const isHighlight = idx === ladderDataRef.current?.winnerStartCol;
         const color = COLORS[idx % COLORS.length];
@@ -357,8 +359,8 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       });
     }
 
-    // 상단 닉네임 뱃지
-    participants.forEach((p, col) => {
+    // 상단 닉네임 뱃지 — 배정 시 확정된 순서 고정
+    drawParticipants.forEach((p, col) => {
       const color = COLORS[col % COLORS.length];
       const bw = Math.max(52, Math.min(80, colW * 0.85));
       const bh = 30;
@@ -374,7 +376,7 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       ctx.fillText(label, cx(col), 6 + bh / 2);
     });
 
-    // 하단: winnerDestCol "당첨", 나머지 빈 원
+    // 하단: winnerDestCol "당첨", 나머지 빈 원 — 배정 시 확정된 위치 고정
     for (let col = 0; col < n; col++) {
       const isWin   = col === winnerDestCol;
       const bottomY = H - PAD_BOT / 2;
@@ -412,25 +414,45 @@ function LadderGame({ participants, isDrawing, onWinner }) {
 
   // 참여자 배정 시: 가로줄 숨기고 세로줄+닉네임+당첨만 표시
   useEffect(() => {
+    // isDrawing 중에는 재초기화 금지 — 배정 시 확정된 닉네임/당첨 위치 유지
     if (!canvasRef.current || !wrapRef.current || participants.length === 0) return;
+    if (phaseRef.current === 'reveal' || phaseRef.current === 'trace') return;
+
     cancelAnimationFrame(animRef.current);
     phaseRef.current = 'initial';
     resizeCanvas();
     const n    = participants.length;
     const rows = Math.max(6, Math.min(12, n + 4));
-    const winnerStartCol = Math.floor(Math.random() * n);
-    const winnerDestCol  = Math.floor(Math.random() * n);
+
+    // 이미 배정된 데이터가 있고 참여자 수가 같으면 winnerStartCol/winnerDestCol 유지
+    const existing = ladderDataRef.current;
+    const winnerStartCol = (existing && existing.n === n)
+      ? existing.winnerStartCol
+      : Math.floor(Math.random() * n);
+    const winnerDestCol = (existing && existing.n === n)
+      ? existing.winnerDestCol
+      : Math.floor(Math.random() * n);
+
     const { rungs, colPaths } = buildFairLadder(n, rows, winnerStartCol, winnerDestCol);
     const pixelPaths = buildPixelPathsFromCanvas(canvasRef.current, n, rows, colPaths);
-    ladderDataRef.current = { n, rows, rungs, colPaths, pixelPaths, winnerStartCol, winnerDestCol };
-    drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: 0 });
+    // 배정 시점의 participants 순서를 스냅샷으로 저장 → 이후 Realtime 변경 무시
+    ladderDataRef.current = {
+      n, rows, rungs, colPaths, pixelPaths,
+      winnerStartCol, winnerDestCol,
+      frozenParticipants: [...participants],
+    };
+    drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: 0 }, [...participants]);
   }, [participants]);
 
   // 추첨시작: Phase1 가로줄 fade-in(800ms) → Phase2 경로 trace
   useEffect(() => {
     if (!isDrawing || !ladderDataRef.current || !canvasRef.current) return;
     cancelAnimationFrame(animRef.current);
-    const { n, rungs, pixelPaths, winnerStartCol, winnerDestCol } = ladderDataRef.current;
+
+    // 배정 시점에 확정된 값을 스냅샷으로 고정 — 이후 절대 변경 없음
+    const { n, rungs, pixelPaths, winnerStartCol, winnerDestCol, frozenParticipants } = ladderDataRef.current;
+    // frozenParticipants: 배정 시 저장된 참여자 순서 고정본
+    const frozenP = frozenParticipants || participants;
 
     const REVEAL_DUR = 800;
     phaseRef.current = 'reveal';
@@ -448,11 +470,11 @@ function LadderGame({ participants, isDrawing, onWinner }) {
           const delay = i === winnerStartCol ? 0.06 : 0;
           return Math.min(Math.max(eased - delay, 0) / (1 - delay), 1);
         });
-        drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: 1, progresses, pixelPaths });
+        drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: 1, progresses, pixelPaths }, frozenP);
         if (rawProg < 1) {
           animRef.current = requestAnimationFrame(traceAnimate);
         } else {
-          onWinner(participants[winnerStartCol]);
+          onWinner(frozenP[winnerStartCol]);
         }
       };
       animRef.current = requestAnimationFrame(traceAnimate);
@@ -464,7 +486,7 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       const alpha = rawProg < 0.5
         ? 2 * rawProg * rawProg
         : 1 - Math.pow(-2 * rawProg + 2, 2) / 2;
-      drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: alpha });
+      drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: alpha }, frozenP);
       if (rawProg < 1) {
         animRef.current = requestAnimationFrame(revealAnimate);
       } else {
