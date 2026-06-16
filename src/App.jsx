@@ -132,25 +132,22 @@ const playSound = (type) => {
 // ===== 사다리 게임 서브컴포넌트 =====
 function LadderGame({ participants, isDrawing, onWinner }) {
   const canvasRef = useRef(null);
-  const wrapRef = useRef(null);
-  const animRef = useRef(null);
-  // ladderDataRef: { n, rows, rungs, colPaths, pixelPaths, winnerStartCol, winnerDestCol }
-  // colPaths[i]  : [{ row, col }, ...] — 논리 경로
-  // pixelPaths[i]: [{ x, y }, ...]    — 픽셀 좌표 세그먼트 (완전히 펼쳐진)
+  const wrapRef   = useRef(null);
+  const animRef   = useRef(null);
   const ladderDataRef = useRef(null);
+  const phaseRef  = useRef('initial');
 
   const COLORS = [
     '#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6',
     '#ec4899','#14b8a6','#f97316','#6366f1','#22c55e',
   ];
 
-  /* ── 레이아웃 헬퍼 ── */
   const getLayout = useCallback((canvas) => {
     const dpr = window.devicePixelRatio || 1;
-    const W = canvas.width / dpr;
-    const H = canvas.height / dpr;
-    const n = participants.length;
-    const PAD_X  = Math.max(50, W * 0.07);
+    const W   = canvas.width  / dpr;
+    const H   = canvas.height / dpr;
+    const n   = participants.length;
+    const PAD_X   = Math.max(50, W * 0.07);
     const PAD_TOP = 58;
     const PAD_BOT = 58;
     const rows = ladderDataRef.current?.rows ?? Math.max(6, Math.min(12, n + 4));
@@ -161,7 +158,6 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     return { W, H, n, PAD_X, PAD_TOP, PAD_BOT, rows, colW, rowH, cx, cy };
   }, [participants]);
 
-  /* ── DPI-aware 캔버스 리사이즈 ── */
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const wrap   = wrapRef.current;
@@ -176,7 +172,6 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     canvas.getContext('2d').scale(dpr, dpr);
   }, []);
 
-  /* ── 사다리 논리 구조 생성 ── */
   const buildLadder = useCallback((n, rows) => {
     const rungs = Array.from({ length: rows }, () => Array(n - 1).fill(false));
     for (let row = 0; row < rows; row++) {
@@ -189,7 +184,6 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     return rungs;
   }, []);
 
-  /* ── 논리 경로(colPath) 계산 ── */
   const calcColPaths = useCallback((n, rungs, rows) => {
     return Array.from({ length: n }, (_, startCol) => {
       const path = [{ row: 0, col: startCol }];
@@ -203,37 +197,23 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     });
   }, []);
 
-  /* ── 픽셀 세그먼트 경로 생성 ──
-   *  사다리의 각 step:
-   *   - col 변화 없음 → 세로줄 따라 아래로 내려감 (rowH 한 칸)
-   *   - col 변화 있음 → ① 가로줄 시작 y(rowH*0.5)까지 내려가고
-   *                      ② 가로로 이동한 뒤
-   *                      ③ 다음 row 상단까지 내려감
-   *  각 step을 sub-segment로 분해해 저장. 애니메이션은 total length 기준 선형 진행.
-   */
   const buildPixelPaths = useCallback((colPaths, cx, cy, rowH) => {
     return colPaths.map((colPath) => {
-      const segs = []; // { x1,y1, x2,y2 }
+      const segs = [];
       for (let s = 0; s < colPath.length - 1; s++) {
         const from = colPath[s];
         const to   = colPath[s + 1];
-        const x0 = cx(from.col);
-        const y0 = cy(from.row);
-        const x1 = cx(to.col);
-        const y1 = cy(to.row);
-
+        const x0 = cx(from.col), y0 = cy(from.row);
+        const x1 = cx(to.col),   y1 = cy(to.row);
         if (from.col === to.col) {
-          // 세로 직선 이동
           segs.push({ x1: x0, y1: y0, x2: x1, y2: y1 });
         } else {
-          // 가로줄 통과: 세 sub-segment
-          const midY = y0 + rowH * 0.5; // 가로줄이 있는 y
-          segs.push({ x1: x0, y1: y0,   x2: x0, y2: midY }); // ① 세로 (가로줄 높이까지)
-          segs.push({ x1: x0, y1: midY, x2: x1, y2: midY }); // ② 가로
-          segs.push({ x1: x1, y1: midY, x2: x1, y2: y1   }); // ③ 세로 (다음 row 상단까지)
+          const midY = y0 + rowH * 0.5;
+          segs.push({ x1: x0, y1: y0,   x2: x0, y2: midY });
+          segs.push({ x1: x0, y1: midY, x2: x1, y2: midY });
+          segs.push({ x1: x1, y1: midY, x2: x1, y2: y1   });
         }
       }
-      // 총 길이 계산 (픽셀)
       let totalLen = 0;
       const segLens = segs.map(s => {
         const l = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
@@ -244,12 +224,10 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     });
   }, []);
 
-  /* ── 공정 사다리: 특정 출발이 winnerDestCol 도착하도록 ── */
   const buildFairLadder = useCallback((n, rows, winnerStartCol, winnerDestCol) => {
-    let rungs, colPaths;
-    let tries = 0;
+    let rungs, colPaths, tries = 0;
     do {
-      rungs = buildLadder(n, rows);
+      rungs    = buildLadder(n, rows);
       colPaths = calcColPaths(n, rungs, rows);
       tries++;
     } while (
@@ -259,7 +237,6 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     return { rungs, colPaths };
   }, [buildLadder, calcColPaths]);
 
-  /* ── 픽셀 경로에서 진행률 t(0~1) 에 해당하는 좌표 반환 ── */
   const pointOnPath = useCallback((pixelPath, t) => {
     const { segs, segLens, totalLen } = pixelPath;
     if (!segs.length) return { x: 0, y: 0 };
@@ -267,10 +244,8 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     for (let i = 0; i < segs.length; i++) {
       if (target <= segLens[i] || i === segs.length - 1) {
         const f = segLens[i] > 0 ? target / segLens[i] : 1;
-        return {
-          x: segs[i].x1 + (segs[i].x2 - segs[i].x1) * f,
-          y: segs[i].y1 + (segs[i].y2 - segs[i].y1) * f,
-        };
+        return { x: segs[i].x1 + (segs[i].x2 - segs[i].x1) * f,
+                 y: segs[i].y1 + (segs[i].y2 - segs[i].y1) * f };
       }
       target -= segLens[i];
     }
@@ -278,7 +253,6 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     return { x: last.x2, y: last.y2 };
   }, []);
 
-  /* ── 픽셀 경로의 0~t 구간을 ctx에 그리기 ── */
   const drawPathUpTo = useCallback((ctx, pixelPath, t) => {
     const { segs, segLens, totalLen } = pixelPath;
     if (!segs.length) return;
@@ -301,14 +275,15 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     }
   }, []);
 
-  /* ── 전체 Canvas 그리기 ── */
-  const drawScene = useCallback((canvas, rungs, winnerDestCol, progresses, pixelPaths) => {
+  // showRungs: false=가로줄 숨김, rungAlpha 0~1=fade
+  const drawScene = useCallback((canvas, rungs, winnerDestCol, opts) => {
     if (!canvas) return;
     const { W, H, n, PAD_TOP, PAD_BOT, rows, colW, rowH, cx, cy } = getLayout(canvas);
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
+    const { rungAlpha = 0, progresses = null, pixelPaths = null } = opts || {};
 
-    /* 세로줄 */
+    // 세로줄
     for (let col = 0; col < n; col++) {
       ctx.beginPath();
       ctx.moveTo(cx(col), PAD_TOP);
@@ -318,27 +293,28 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       ctx.stroke();
     }
 
-    /* 가로줄 */
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < n - 1; col++) {
-        if (rungs[row][col]) {
-          ctx.beginPath();
-          ctx.moveTo(cx(col),     cy(row) + rowH * 0.5);
-          ctx.lineTo(cx(col + 1), cy(row) + rowH * 0.5);
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 3;
-          ctx.stroke();
+    // 가로줄 (rungAlpha 에 따라 fade-in)
+    if (rungAlpha > 0) {
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < n - 1; col++) {
+          if (rungs[row][col]) {
+            ctx.beginPath();
+            ctx.moveTo(cx(col),     cy(row) + rowH * 0.5);
+            ctx.lineTo(cx(col + 1), cy(row) + rowH * 0.5);
+            ctx.strokeStyle = `rgba(148,163,184,${rungAlpha})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
         }
       }
     }
 
-    /* 진행 경로 */
+    // 경로 선 + 마커
     if (progresses && pixelPaths) {
       participants.forEach((p, idx) => {
         const t = progresses[idx];
         const isHighlight = idx === ladderDataRef.current?.winnerStartCol;
         const color = COLORS[idx % COLORS.length];
-
         ctx.save();
         drawPathUpTo(ctx, pixelPaths[idx], t);
         ctx.strokeStyle = isHighlight ? color : color + '99';
@@ -347,8 +323,6 @@ function LadderGame({ participants, isDrawing, onWinner }) {
         ctx.lineCap     = 'round';
         ctx.stroke();
         ctx.restore();
-
-        /* 현재 위치 마커 */
         const pt = pointOnPath(pixelPaths[idx], t);
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, isHighlight ? 11 : 7, 0, Math.PI * 2);
@@ -360,7 +334,7 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       });
     }
 
-    /* 상단 닉네임 뱃지 */
+    // 상단 닉네임 뱃지
     participants.forEach((p, col) => {
       const color = COLORS[col % COLORS.length];
       const bw = Math.max(52, Math.min(80, colW * 0.85));
@@ -369,17 +343,17 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       ctx.beginPath();
       ctx.roundRect(cx(col) - bw / 2, 6, bw, bh, 8);
       ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.max(9, Math.min(14, 120 / n))}px sans-serif`;
+      ctx.fillStyle    = '#fff';
+      ctx.font         = `bold ${Math.max(9, Math.min(14, 120 / n))}px sans-serif`;
       ctx.textAlign    = 'center';
       ctx.textBaseline = 'middle';
-      const label = p.nickname.length > 5 ? p.nickname.slice(0, 4) + '…' : p.nickname;
+      const label = p.nickname.length > 5 ? p.nickname.slice(0, 4) + '\u2026' : p.nickname;
       ctx.fillText(label, cx(col), 6 + bh / 2);
     });
 
-    /* 하단: winnerDestCol만 "당첨", 나머지 빈 원 */
+    // 하단: winnerDestCol "당첨", 나머지 빈 원
     for (let col = 0; col < n; col++) {
-      const isWin  = col === winnerDestCol;
+      const isWin   = col === winnerDestCol;
       const bottomY = H - PAD_BOT / 2;
       const r = isWin ? 24 : 18;
       ctx.beginPath();
@@ -394,69 +368,88 @@ function LadderGame({ participants, isDrawing, onWinner }) {
         ctx.font         = 'bold 12px sans-serif';
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('당첨', cx(col), bottomY);
+        ctx.fillText('\ub2f9\ucca8', cx(col), bottomY);
       }
     }
   }, [participants, COLORS, getLayout, drawPathUpTo, pointOnPath]);
 
-  /* ── 참여자 변경 시 초기화 & 정적 그리기 ── */
-  useEffect(() => {
-    if (!canvasRef.current || !wrapRef.current || participants.length === 0) return;
-    resizeCanvas();
-    const n    = participants.length;
-    const rows = Math.max(6, Math.min(12, n + 4));
-    const winnerStartCol = Math.floor(Math.random() * n);
-    const winnerDestCol  = Math.floor(Math.random() * n);
-    const { rungs, colPaths } = buildFairLadder(n, rows, winnerStartCol, winnerDestCol);
-
-    // 레이아웃 헬퍼 계산 (픽셀 경로용)
-    const canvas = canvasRef.current;
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.width / dpr;
-    const H = canvas.height / dpr;
-    const PAD_X  = Math.max(50, W * 0.07);
+  const buildPixelPathsFromCanvas = useCallback((canvas, n, rows, colPaths) => {
+    const dpr     = window.devicePixelRatio || 1;
+    const W       = canvas.width  / dpr;
+    const H       = canvas.height / dpr;
+    const PAD_X   = Math.max(50, W * 0.07);
     const PAD_TOP = 58;
     const PAD_BOT = 58;
     const colW = (W - PAD_X * 2) / (n - 1 || 1);
     const rowH = (H - PAD_TOP - PAD_BOT) / rows;
     const cx = (c) => PAD_X + c * colW;
     const cy = (r) => PAD_TOP + r * rowH;
+    return buildPixelPaths(colPaths, cx, cy, rowH);
+  }, [buildPixelPaths]);
 
-    const pixelPaths = buildPixelPaths(colPaths, cx, cy, rowH);
+  // 참여자 배정 시: 가로줄 숨기고 세로줄+닉네임+당첨만 표시
+  useEffect(() => {
+    if (!canvasRef.current || !wrapRef.current || participants.length === 0) return;
+    cancelAnimationFrame(animRef.current);
+    phaseRef.current = 'initial';
+    resizeCanvas();
+    const n    = participants.length;
+    const rows = Math.max(6, Math.min(12, n + 4));
+    const winnerStartCol = Math.floor(Math.random() * n);
+    const winnerDestCol  = Math.floor(Math.random() * n);
+    const { rungs, colPaths } = buildFairLadder(n, rows, winnerStartCol, winnerDestCol);
+    const pixelPaths = buildPixelPathsFromCanvas(canvasRef.current, n, rows, colPaths);
     ladderDataRef.current = { n, rows, rungs, colPaths, pixelPaths, winnerStartCol, winnerDestCol };
-    drawScene(canvas, rungs, winnerDestCol, null, null);
+    drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: 0 });
   }, [participants]);
 
-  /* ── 애니메이션 ── */
+  // 추첨시작: Phase1 가로줄 fade-in(800ms) → Phase2 경로 trace
   useEffect(() => {
     if (!isDrawing || !ladderDataRef.current || !canvasRef.current) return;
-    const { n, rows, rungs, pixelPaths, winnerStartCol, winnerDestCol } = ladderDataRef.current;
-    const duration   = 4000 + n * 300;
-    const startTime  = performance.now();
+    cancelAnimationFrame(animRef.current);
+    const { n, rungs, pixelPaths, winnerStartCol, winnerDestCol } = ladderDataRef.current;
 
-    const animate = (now) => {
-      const elapsed = now - startTime;
-      const rawProg = Math.min(elapsed / duration, 1);
-      // ease-out cubic
-      const eased = 1 - Math.pow(1 - rawProg, 3);
+    const REVEAL_DUR = 800;
+    phaseRef.current = 'reveal';
+    const revealStart = performance.now();
 
-      // 당첨자 라인은 약간 느리게 도착 → 극적 연출
-      const progresses = Array.from({ length: n }, (_, i) => {
-        const delay = i === winnerStartCol ? 0.06 : 0;
-        return Math.min(Math.max(eased - delay, 0) / (1 - delay), 1);
-      });
+    const startTrace = () => {
+      phaseRef.current = 'trace';
+      const TRACE_DUR  = 4000 + n * 300;
+      const traceStart = performance.now();
+      const traceAnimate = (now) => {
+        const elapsed = now - traceStart;
+        const rawProg = Math.min(elapsed / TRACE_DUR, 1);
+        const eased   = 1 - Math.pow(1 - rawProg, 3);
+        const progresses = Array.from({ length: n }, (_, i) => {
+          const delay = i === winnerStartCol ? 0.06 : 0;
+          return Math.min(Math.max(eased - delay, 0) / (1 - delay), 1);
+        });
+        drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: 1, progresses, pixelPaths });
+        if (rawProg < 1) {
+          animRef.current = requestAnimationFrame(traceAnimate);
+        } else {
+          onWinner(participants[winnerStartCol]);
+        }
+      };
+      animRef.current = requestAnimationFrame(traceAnimate);
+    };
 
-      drawScene(canvasRef.current, rungs, winnerDestCol, progresses, pixelPaths);
-
+    const revealAnimate = (now) => {
+      const elapsed = now - revealStart;
+      const rawProg = Math.min(elapsed / REVEAL_DUR, 1);
+      const alpha = rawProg < 0.5
+        ? 2 * rawProg * rawProg
+        : 1 - Math.pow(-2 * rawProg + 2, 2) / 2;
+      drawScene(canvasRef.current, rungs, winnerDestCol, { rungAlpha: alpha });
       if (rawProg < 1) {
-        animRef.current = requestAnimationFrame(animate);
+        animRef.current = requestAnimationFrame(revealAnimate);
       } else {
-        // 당첨자: winnerStartCol 출발자
-        onWinner(participants[winnerStartCol]);
+        setTimeout(startTrace, 300);
       }
     };
 
-    animRef.current = requestAnimationFrame(animate);
+    animRef.current = requestAnimationFrame(revealAnimate);
     return () => cancelAnimationFrame(animRef.current);
   }, [isDrawing]);
 
@@ -2417,19 +2410,24 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                 {/* 답안 입력 UI */}
                 {hasSubmittedAnswer ? (
                   <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100">
-                    <CheckCircle className="w-10 h-10 text-cyan-500 mx-auto mb-2" />
-                    <p className="font-bold text-slate-700">답안 제출을 완료했습니다!</p>
-                    <p className="text-xs text-slate-400 mt-1">관리자가 정답과 분포를 오픈할 때까지 잠시 대기해주세요.</p>
-                    {selectedAnswer && selectedAnswer !== '시간 초과' && (
-                      <div className="mt-3 inline-block bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2">
-                        <p className="text-xs text-slate-500 font-semibold">제출한 답안</p>
-                        <p className="text-base font-black text-cyan-700 mt-0.5">{selectedAnswer}</p>
-                      </div>
-                    )}
-                    {selectedAnswer === '시간 초과' && (
-                      <div className="mt-3 inline-block bg-rose-50 border border-rose-200 rounded-lg px-4 py-2">
-                        <p className="text-xs text-rose-500 font-bold">⏰ 시간 초과 — 미제출 처리됩니다.</p>
-                      </div>
+                    {selectedAnswer === '시간 초과' ? (
+                      <>
+                        <div className="text-3xl mb-2">⏰</div>
+                        <p className="font-bold text-rose-600">시간 내에 응답을 제출하지 못했습니다</p>
+                        <p className="text-xs text-rose-400 mt-1">이번 문제는 미제출로 처리됩니다.</p>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-10 h-10 text-cyan-500 mx-auto mb-2" />
+                        <p className="font-bold text-slate-700">답안 제출을 완료했습니다!</p>
+                        <p className="text-xs text-slate-400 mt-1">관리자가 정답과 분포를 오픈할 때까지 잠시 대기해주세요.</p>
+                        {selectedAnswer && (
+                          <div className="mt-3 inline-block bg-cyan-50 border border-cyan-200 rounded-lg px-4 py-2">
+                            <p className="text-xs text-slate-500 font-semibold">제출한 답안</p>
+                            <p className="text-base font-black text-cyan-700 mt-0.5">{selectedAnswer}</p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 ) : quizTimer === 0 ? (
