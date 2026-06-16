@@ -3769,7 +3769,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
         return (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-            <div className="bg-white border border-slate-200 rounded-2xl w-[80vw] h-[77vh] shadow-2xl flex flex-col overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-2xl w-[80vw] h-[87vh] shadow-2xl flex flex-col overflow-hidden">
               {/* 헤더 */}
               <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
                 <h4 className="font-black text-slate-800 text-xl flex items-center space-x-2">
@@ -3788,13 +3788,13 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
               <div className="flex flex-1 overflow-hidden">
 
                 {/* ── 왼쪽: 추첨판 시각화 (70%) ── */}
-                <div className="w-[70%] bg-slate-50 border-r border-slate-100 flex flex-col items-center justify-center relative overflow-hidden p-4">
+                <div className="w-[70%] bg-slate-50 border-r border-slate-100 flex flex-col items-center justify-center relative overflow-hidden p-2">
                   {!isRaffleAssigned ? (
                     <div className="w-full space-y-4">
                       <div className="text-center space-y-1">
                         <Users className="w-10 h-10 mx-auto text-slate-300" />
                         <p className="font-bold text-base text-slate-500">추첨 대상자 명단</p>
-                        <p className="text-xs text-slate-400">오른쪽 '추첨시작' 버튼을 눌러 추첨판을 배정해주세요.</p>
+                        <p className="text-xs text-slate-400">오른쪽 '추첨판 배정' 버튼을 눌러 추첨판을 배정해주세요.</p>
                       </div>
                       {correctResponses.length === 0 ? (
                         <div className="bg-white border border-slate-200 rounded-xl p-4 text-center">
@@ -3951,7 +3951,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                         }}
                         className="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 rounded-xl shadow transition-all"
                       >
-                        추첨시작
+                        추첨판 배정
                       </button>
                     ) : (
                       <button
