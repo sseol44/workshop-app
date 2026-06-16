@@ -132,24 +132,40 @@ const playSound = (type) => {
 // ===== 사다리 게임 서브컴포넌트 =====
 function LadderGame({ participants, isDrawing, onWinner }) {
   const canvasRef = useRef(null);
+  const wrapRef = useRef(null);
   const animRef = useRef(null);
-  const ladderDataRef = useRef(null); // { cols, rungs, paths }
+  const ladderDataRef = useRef(null); // { n, rows, rungs, paths, winnerDestCol }
 
   const COLORS = [
     '#06b6d4','#10b981','#f59e0b','#ef4444','#8b5cf6',
     '#ec4899','#14b8a6','#f97316','#6366f1','#22c55e',
   ];
 
+  // DPI-aware 캔버스 크기 설정
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const wrap = wrapRef.current;
+    if (!canvas || !wrap) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+  }, []);
+
   // 사다리 구조 생성
   const buildLadder = useCallback((n, rows) => {
-    // rungs[row][col] = true → col~col+1 사이에 가로줄
     const rungs = Array.from({ length: rows }, () => Array(n - 1).fill(false));
     for (let row = 0; row < rows; row++) {
       let col = 0;
       while (col < n - 1) {
         if (Math.random() < 0.45) {
           rungs[row][col] = true;
-          col += 2; // 인접 가로줄 방지
+          col += 2;
         } else {
           col++;
         }
@@ -158,41 +174,55 @@ function LadderGame({ participants, isDrawing, onWinner }) {
     return rungs;
   }, []);
 
-  // 각 참여자의 경로 계산
+  // 각 참여자 경로 계산
   const calcPaths = useCallback((n, rungs, rows) => {
     return Array.from({ length: n }, (_, startCol) => {
       const path = [{ row: 0, col: startCol }];
       let col = startCol;
       for (let row = 0; row < rows; row++) {
-        // 오른쪽 가로줄
-        if (col < n - 1 && rungs[row][col]) {
-          col++;
-        // 왼쪽 가로줄
-        } else if (col > 0 && rungs[row][col - 1]) {
-          col--;
-        }
+        if (col < n - 1 && rungs[row][col]) col++;
+        else if (col > 0 && rungs[row][col - 1]) col--;
         path.push({ row: row + 1, col });
       }
       return path;
     });
   }, []);
 
-  // Canvas 전체 그리기
-  const draw = useCallback((canvas, participants, rungs, rows, progressMap, highlightIdx) => {
+  // ── 핵심: 특정 출발 컬럼이 winnerDestCol에 도착하도록 사다리 재생성 ──
+  const buildFairLadder = useCallback((n, rows, winnerStartCol, winnerDestCol) => {
+    let rungs, paths;
+    let attempts = 0;
+    do {
+      rungs = buildLadder(n, rows);
+      paths = calcPaths(n, rungs, rows);
+      attempts++;
+      // winnerStartCol 출발 경로의 최종 도착 col이 winnerDestCol인지 확인
+    } while (
+      paths[winnerStartCol][paths[winnerStartCol].length - 1].col !== winnerDestCol
+      && attempts < 500
+    );
+    return { rungs, paths };
+  }, [buildLadder, calcPaths]);
+
+  // Canvas 전체 그리기 (논리 픽셀 기준으로 좌표 계산)
+  const draw = useCallback((canvas, participants, rungs, rows, progressMap, highlightIdx, winnerDestCol) => {
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
+    const dpr = window.devicePixelRatio || 1;
+    // 논리 크기 (CSS px)
+    const W = canvas.width / dpr;
+    const H = canvas.height / dpr;
     const n = participants.length;
-    const PAD_X = 36;
-    const PAD_TOP = 44;
-    const PAD_BOT = 44;
+
+    const PAD_X = Math.max(40, W * 0.05);
+    const PAD_TOP = 54;
+    const PAD_BOT = 54;
     const colW = (W - PAD_X * 2) / (n - 1 || 1);
     const rowH = (H - PAD_TOP - PAD_BOT) / rows;
 
     const cx = (col) => PAD_X + col * colW;
     const cy = (row) => PAD_TOP + row * rowH;
 
+    const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
 
     // 세로줄
@@ -219,31 +249,26 @@ function LadderGame({ participants, isDrawing, onWinner }) {
       }
     }
 
-    // 진행 경로 그리기 (애니메이션 중)
+    // 진행 경로 애니메이션
     if (progressMap) {
       participants.forEach((p, idx) => {
         const path = progressMap.paths[idx];
-        const progress = progressMap.progresses[idx]; // 0~1
+        const progress = progressMap.progresses[idx];
         const totalSteps = path.length - 1;
         const currentStep = Math.min(Math.floor(progress * totalSteps), totalSteps - 1);
         const stepFrac = (progress * totalSteps) - currentStep;
-
         const isHighlight = idx === highlightIdx;
         const color = COLORS[idx % COLORS.length];
 
         ctx.beginPath();
-        // 이미 지나온 경로
         for (let s = 0; s <= currentStep; s++) {
           const from = path[s];
           const to = path[s + 1] || path[s];
           if (s === 0) ctx.moveTo(cx(from.col), cy(from.row));
           if (s < currentStep) {
-            ctx.lineTo(cx(to.col), cy(to.row + (to.row > from.row ? 0 : 0)));
-            // 가로 이동이면 같은 y
             const midY = from.row === to.row ? cy(from.row) + rowH * 0.5 : cy(to.row);
             ctx.lineTo(cx(to.col), midY);
           } else {
-            // 현재 step 중간
             const fromX = cx(from.col);
             const toX = cx(to.col);
             const fromY = from.row === to.row ? cy(from.row) + rowH * 0.5 : cy(from.row);
@@ -253,12 +278,12 @@ function LadderGame({ participants, isDrawing, onWinner }) {
           }
         }
         ctx.strokeStyle = isHighlight ? color : color + '88';
-        ctx.lineWidth = isHighlight ? 4 : 2.5;
+        ctx.lineWidth = isHighlight ? 5 : 3;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.stroke();
 
-        // 현재 위치 원형 마커
+        // 이동 마커
         const curFrom = path[currentStep];
         const curTo = path[currentStep + 1] || path[currentStep];
         const markerX = cx(curFrom.col) + (cx(curTo.col) - cx(curFrom.col)) * stepFrac;
@@ -267,87 +292,108 @@ function LadderGame({ participants, isDrawing, onWinner }) {
         const markerY = markerFromY + (markerToY - markerFromY) * stepFrac;
 
         ctx.beginPath();
-        ctx.arc(markerX, markerY, isHighlight ? 9 : 6, 0, Math.PI * 2);
+        ctx.arc(markerX, markerY, isHighlight ? 11 : 7, 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
         ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.stroke();
       });
     }
 
-    // 상단 닉네임
+    // 상단 닉네임 뱃지
     participants.forEach((p, col) => {
       const color = COLORS[col % COLORS.length];
+      const bw = Math.max(48, Math.min(72, colW * 0.85));
+      const bh = 28;
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.roundRect(cx(col) - 22, 4, 44, 22, 6);
+      ctx.roundRect(cx(col) - bw / 2, 6, bw, bh, 8);
       ctx.fill();
       ctx.fillStyle = '#fff';
-      ctx.font = `bold ${Math.max(8, Math.min(11, 88 / n))}px sans-serif`;
+      ctx.font = `bold ${Math.max(9, Math.min(13, 110 / n))}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const label = p.nickname.length > 4 ? p.nickname.slice(0, 3) + '…' : p.nickname;
-      ctx.fillText(label, cx(col), 15);
+      const label = p.nickname.length > 5 ? p.nickname.slice(0, 4) + '…' : p.nickname;
+      ctx.fillText(label, cx(col), 6 + bh / 2);
     });
 
-    // 하단 결과 번호
+    // 하단 결과: winnerDestCol만 "당첨" 강조, 나머지는 빈 원
     for (let col = 0; col < n; col++) {
-      ctx.fillStyle = '#e2e8f0';
-      ctx.beginPath();
-      ctx.arc(cx(col), H - 22, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#cbd5e1';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = '#64748b';
-      ctx.font = 'bold 10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(col + 1, cx(col), H - 22);
-    }
-  }, [COLORS, buildLadder]);
+      const isWin = col === winnerDestCol;
+      const bottomY = H - PAD_BOT / 2;
+      const r = isWin ? 22 : 16;
 
-  // 초기 그리기
+      if (isWin) {
+        // 당첨 칸: 골드 원형 + "당첨" 텍스트
+        ctx.beginPath();
+        ctx.arc(cx(col), bottomY, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fill();
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('당첨', cx(col), bottomY);
+      } else {
+        // 일반 칸: 회색 원형 (비어있음)
+        ctx.beginPath();
+        ctx.arc(cx(col), bottomY, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fill();
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  }, [COLORS]);
+
+  // 참여자 변경 시 초기 그리기
   useEffect(() => {
-    if (!canvasRef.current || participants.length === 0) return;
+    if (!canvasRef.current || !wrapRef.current || participants.length === 0) return;
+    resizeCanvas();
     const n = participants.length;
-    const rows = Math.max(5, Math.min(10, n + 3));
-    const rungs = buildLadder(n, rows);
-    const paths = calcPaths(n, rungs, rows);
-    ladderDataRef.current = { n, rows, rungs, paths };
-    draw(canvasRef.current, participants, rungs, rows, null, -1);
+    const rows = Math.max(6, Math.min(12, n + 4));
+    const winnerStartCol = Math.floor(Math.random() * n);
+    const winnerDestCol = Math.floor(Math.random() * n);
+    const { rungs, paths } = buildFairLadder(n, rows, winnerStartCol, winnerDestCol);
+    ladderDataRef.current = { n, rows, rungs, paths, winnerStartCol, winnerDestCol };
+    draw(canvasRef.current, participants, rungs, rows, null, -1, winnerDestCol);
   }, [participants]);
 
-  // 애니메이션 실행
+  // 애니메이션
   useEffect(() => {
     if (!isDrawing || !ladderDataRef.current || !canvasRef.current) return;
-
-    const { n, rows, rungs, paths } = ladderDataRef.current;
-    const winnerCol = Math.floor(Math.random() * n);
+    const { n, rows, rungs, paths, winnerStartCol, winnerDestCol } = ladderDataRef.current;
     const duration = 3500 + n * 200;
     const startTime = performance.now();
 
     const animate = (now) => {
       const elapsed = now - startTime;
       const rawProg = Math.min(elapsed / duration, 1);
-      // 감속 easing
       const eased = 1 - Math.pow(1 - rawProg, 3);
 
       const progresses = Array.from({ length: n }, (_, i) => {
-        // 당첨자는 조금 늦게 도착해서 극적 효과
-        const delay = i === winnerCol ? 0.05 : 0;
+        const delay = i === winnerStartCol ? 0.05 : 0;
         return Math.min(Math.max(eased - delay, 0) / (1 - delay), 1);
       });
 
       draw(canvasRef.current, participants, rungs, rows,
-        { paths, progresses }, winnerCol);
+        { paths, progresses }, winnerStartCol, winnerDestCol);
 
       if (rawProg < 1) {
         animRef.current = requestAnimationFrame(animate);
       } else {
-        // 완료
-        onWinner(participants[paths[winnerCol][paths[winnerCol].length - 1].col]);
+        // 당첨자: winnerStartCol 출발 → winnerDestCol 도착 → 그 자리 참여자가 winner
+        const arrivedCol = paths[winnerStartCol][paths[winnerStartCol].length - 1].col;
+        const winner = participants.find((_, i) => {
+          const finalCol = paths[i][paths[i].length - 1].col;
+          return finalCol === winnerDestCol && i === winnerStartCol;
+        }) || participants[arrivedCol] || participants[winnerStartCol];
+        onWinner(winner);
       }
     };
 
@@ -356,16 +402,12 @@ function LadderGame({ participants, isDrawing, onWinner }) {
   }, [isDrawing]);
 
   return (
-    <div className="w-full flex flex-col items-center space-y-1">
+    <div ref={wrapRef} className="w-full h-full flex flex-col items-center">
       <canvas
         ref={canvasRef}
-        width={380}
-        height={320}
-        className="w-full rounded-xl bg-slate-50 border border-slate-200"
+        className="w-full h-full rounded-xl bg-white border border-slate-100"
+        style={{ display: 'block' }}
       />
-      <p className="text-[10px] text-slate-400 font-bold">
-        총 {participants.length}명 · 사다리 시뮬레이션
-      </p>
     </div>
   );
 }
@@ -391,8 +433,8 @@ function RouletteWheel({ participants, canvasRef, angleRef, drawFn }) {
         <div className="rounded-full p-1.5 bg-gradient-to-br from-slate-700 to-slate-900 shadow-2xl">
           <canvas
             ref={canvasRef}
-            width={300}
-            height={300}
+            width={480}
+            height={480}
             className="rounded-full block"
           />
         </div>
@@ -3670,7 +3712,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
 
         return (
           <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 z-50">
-            <div className="bg-white border border-slate-200 rounded-2xl w-[80vw] max-h-[88vh] shadow-2xl flex flex-col overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-2xl w-[80vw] h-[77vh] shadow-2xl flex flex-col overflow-hidden">
               {/* 헤더 */}
               <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
                 <h4 className="font-black text-slate-800 text-xl flex items-center space-x-2">
@@ -3689,7 +3731,7 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
               <div className="flex flex-1 overflow-hidden">
 
                 {/* ── 왼쪽: 추첨판 시각화 (70%) ── */}
-                <div className="w-[70%] bg-slate-50 border-r border-slate-100 flex flex-col items-center justify-center relative overflow-hidden p-6">
+                <div className="w-[70%] bg-slate-50 border-r border-slate-100 flex flex-col items-center justify-center relative overflow-hidden p-4">
                   {!isRaffleAssigned ? (
                     <div className="w-full space-y-4">
                       <div className="text-center space-y-1">
@@ -3725,15 +3767,17 @@ VOC: [${surveyResults.map(r => r.voc).filter(v => v).join(' / ')}]
                       drawFn={drawRouletteWheel}
                     />
                   ) : (
-                    <LadderGame
-                      participants={correctResponses}
-                      isDrawing={isDrawing && drawMethod === 'ladder'}
-                      onWinner={(winner) => {
-                        setDrawWinner(winner);
-                        setIsDrawing(false);
-                        if (soundEnabled) playSound('success');
-                      }}
-                    />
+                    <div className="w-full h-full">
+                      <LadderGame
+                        participants={correctResponses}
+                        isDrawing={isDrawing && drawMethod === 'ladder'}
+                        onWinner={(winner) => {
+                          setDrawWinner(winner);
+                          setIsDrawing(false);
+                          if (soundEnabled) playSound('success');
+                        }}
+                      />
+                    </div>
                   )}
 
                   {isDrawing && drawMethod !== 'ladder' && (
